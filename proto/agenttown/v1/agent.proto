@@ -1,0 +1,232 @@
+syntax = "proto3";
+
+package agenttown.v1;
+option go_package = "github.com/RedContritio/agent-town/proto/agenttown/v1;agenttownv1";
+
+import "agenttown/v1/common.proto";
+
+// AgentService provides agent management functionality
+service AgentService {
+  // Register a new agent
+  rpc Register(RegisterRequest) returns (RegisterResponse);
+  
+  // Login an existing agent
+  rpc Login(LoginRequest) returns (LoginResponse);
+  
+  // Generate todo token for web management
+  rpc GenerateTodoToken(GenerateTodoTokenRequest) returns (GenerateTodoTokenResponse);
+  
+  // Get agent details
+  rpc GetAgent(GetAgentRequest) returns (Agent);
+  
+  // Get agent status including pending events
+  rpc GetAgentStatus(GetAgentStatusRequest) returns (AgentStatus);
+  
+  // Update agent position
+  rpc UpdatePosition(UpdatePositionRequest) returns (UpdatePositionResponse);
+  
+  // Get visible area around agent
+  rpc GetVisibleArea(GetVisibleAreaRequest) returns (VisibleArea);
+  
+  // Get agent inventory
+  rpc GetInventory(GetInventoryRequest) returns (Inventory);
+  
+  // Use an item from inventory
+  rpc UseItem(UseItemRequest) returns (UseItemResponse);
+  
+  // Drop an item from inventory
+  rpc DropItem(DropItemRequest) returns (DropItemResponse);
+  
+  // Get agent skills
+  rpc GetSkills(GetSkillsRequest) returns (Skills);
+  
+  // Get agent todos
+  rpc GetTodos(GetTodosRequest) returns (Todos);
+  
+  // Long polling for events
+  rpc PollEvents(PollEventsRequest) returns (PollEventsResponse);
+}
+
+// Agent represents an agent in the game
+message Agent {
+  string id = 1;
+  string name = 2;
+  Position position = 3;
+  int32 facing = 4;
+  int32 hp = 5;
+  int32 max_hp = 6;
+  int32 stamina = 7;
+  int32 max_stamina = 8;
+  int32 hunger = 9;
+  int32 max_hunger = 10;
+  int32 balance = 11;
+  bool is_online = 12;
+  bool in_battle = 13;
+  string battle_id = 14;
+}
+
+message RegisterRequest {
+  string public_key = 1;
+  string name = 2;
+}
+
+message RegisterResponse {
+  string agent_id = 1;
+  string token = 2;
+}
+
+message LoginRequest {
+  string agent_id = 1;
+  bytes signature = 2;
+}
+
+message LoginResponse {
+  string token = 1;
+  Agent agent = 2;
+}
+
+message GenerateTodoTokenRequest {
+  string agent_id = 1;
+  int32 expire_days = 2;
+}
+
+message GenerateTodoTokenResponse {
+  string todo_token = 1;
+  string expires_at = 2;
+}
+
+message GetAgentRequest {
+  string agent_id = 1;
+}
+
+message GetAgentStatusRequest {
+  string agent_id = 1;
+}
+
+message AgentStatus {
+  string agent_id = 1;
+  string world_time = 2;
+  int32 stamina = 3;
+  int32 hunger = 4;
+  bool in_battle = 5;
+  repeated Event pending_events = 6;
+}
+
+message UpdatePositionRequest {
+  string agent_id = 1;
+  Position target = 2;
+}
+
+message UpdatePositionResponse {
+  bool success = 1;
+  string error = 2;
+  Position new_position = 3;
+  int32 stamina_cost = 4;
+}
+
+message GetVisibleAreaRequest {
+  string agent_id = 1;
+}
+
+message VisibleArea {
+  string agent_id = 1;
+  Position center = 2;
+  int32 radius = 3;
+  repeated BlockView blocks = 4;
+  repeated AgentView agents = 5;
+  repeated BuildingView buildings = 6;
+  repeated MonsterView monsters = 7;
+}
+
+message BlockView {
+  Position position = 1;
+  int32 height = 2;
+  string terrain_type = 3;
+  string resource_type = 4;
+  int32 resource_amount = 5;
+}
+
+message AgentView {
+  string id = 1;
+  string name = 2;
+  Position position = 3;
+  int32 facing = 4;
+}
+
+message BuildingView {
+  string id = 1;
+  string name = 2;
+  string owner_id = 3;
+  Position anchor = 4;
+  int32 width = 5;
+  int32 depth = 6;
+  int32 height = 7;
+}
+
+message MonsterView {
+  string id = 1;
+  string name = 2;
+  string type = 3;
+  Position position = 4;
+}
+
+message Inventory {
+  string agent_id = 1;
+  int32 capacity = 2;
+  repeated ItemSlot slots = 3;
+}
+
+message GetInventoryRequest {
+  string agent_id = 1;
+}
+
+message UseItemRequest {
+  string agent_id = 1;
+  int32 slot_index = 2;
+  bytes target = 3;
+}
+
+message UseItemResponse {
+  bool success = 1;
+  string error = 2;
+  bytes result = 3;
+}
+
+message DropItemRequest {
+  string agent_id = 1;
+  int32 slot_index = 2;
+  int32 quantity = 3;
+}
+
+message DropItemResponse {
+  bool success = 1;
+  string error = 2;
+}
+
+message Skills {
+  string agent_id = 1;
+  repeated Skill skills = 2;
+}
+
+message GetSkillsRequest {
+  string agent_id = 1;
+}
+
+message Todos {
+  string agent_id = 1;
+  repeated Todo todos = 2;
+}
+
+message GetTodosRequest {
+  string agent_id = 1;
+  string status_filter = 2;
+}
+
+message PollEventsRequest {
+  string agent_id = 1;
+  int32 timeout_seconds = 2;
+}
+
+message PollEventsResponse {
+  repeated Event events = 1;
+}

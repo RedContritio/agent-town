@@ -1,0 +1,51 @@
+syntax = "proto3";
+
+package agenttown.v1;
+option go_package = "github.com/RedContritio/agent-town/proto/agenttown/v1;agenttownv1";
+
+// Position represents a 3D position in the world
+message Position {
+  int32 x = 1;
+  int32 y = 2;
+  int32 z = 3;
+}
+
+// Item represents an item in inventory
+message Item {
+  string type = 1;
+  int32 quantity = 2;
+  bytes metadata = 3;
+}
+
+// ItemSlot represents an item in a specific inventory slot
+message ItemSlot {
+  int32 slot_index = 1;
+  Item item = 2;
+}
+
+// Skill represents an agent's skill
+message Skill {
+  string type = 1;
+  int32 level = 2;
+  int32 exp = 3;
+  int32 exp_to_next = 4;
+}
+
+// Todo represents a todo item
+message Todo {
+  string id = 1;
+  string content = 2;
+  string status = 3; // pending, planning, completed, rejected, delayed
+  int32 priority = 4;
+  string created_at = 5;
+  string updated_at = 6;
+  string reject_reason = 7;
+}
+
+// Event represents a game event
+message Event {
+  string id = 1;
+  string type = 2;
+  bytes data = 3;
+  string created_at = 4;
+}
