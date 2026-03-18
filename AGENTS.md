@@ -16,14 +16,12 @@ The project aims to create a self-evolving society where agents autonomously bui
 | Component | Technology | Version |
 |-----------|------------|---------|
 | Backend | Go | 1.22+ |
-| Web Frontend | React + TypeScript | React 18 |
-| 3D Rendering | Three.js | 0.160.0 |
-| React 3D | @react-three/fiber | 8.15.0 |
-| Build Tool | Vite | 5.0.0 |
-| State Management | Zustand | 4.4.0 |
-| API Protocol | Protocol Buffers + gRPC (planned) | v3 |
-| Database | PostgreSQL | 16 |
-| Cache | Redis | 7 |
+| Web Frontend | Godot | 4.5+ |
+| 3D Rendering | Godot Engine | Built-in |
+| Web Export | WebAssembly | WASM |
+| API Protocol | HTTP REST | JSON |
+| Database | PostgreSQL | 16 (planned) |
+| Cache | Redis | 7 (planned) |
 | Containerization | Docker Compose | 3.8 |
 
 ## Project Structure
@@ -35,29 +33,29 @@ agent-town/
 │       └── main.go         # Entry point (placeholder)
 ├── server/                 # Backend server (Go)
 │   └── cmd/server/
-│       └── main.go         # HTTP server with mock data
-├── web/                    # Web frontend (React + TypeScript)
-│   ├── src/
-│   │   ├── api/            # API client (Axios)
-│   │   ├── components/     # React components
-│   │   │   └── WorldScene.tsx    # Main 3D scene
-│   │   ├── stores/         # Zustand state management
-│   │   │   ├── worldStore.ts
-│   │   │   └── agentStore.ts
-│   │   ├── types/          # TypeScript type definitions
-│   │   ├── App.tsx
-│   │   └── main.tsx
-│   ├── package.json
-│   ├── tsconfig.json
-│   └── vite.config.ts
-├── proto/                  # Protocol Buffer definitions
+│       ├── main.go         # HTTP server with REST API
+│       └── web/            # Godot web export (generated, gitignored)
+├── godot-web/              # Web frontend (Godot project)
+│   ├── scenes/             # Godot scene files
+│   │   ├── entities/       # Agent, Building scenes
+│   │   ├── ui/             # HUD, UI scenes
+│   │   └── main.tscn       # Main scene
+│   ├── scripts/            # GDScript files
+│   │   ├── api_client.gd   # HTTP API client
+│   │   ├── camera_controller.gd
+│   │   ├── world_manager.gd
+│   │   └── entities/       # Entity scripts
+│   ├── project.godot       # Godot project config
+│   └── export_presets.cfg  # Export configuration
+├── proto/                  # Protocol Buffer definitions (planned for gRPC)
 │   └── agenttown/v1/
-│       ├── agent.proto     # Agent service definitions
-│       └── common.proto    # Common message types
-├── docs/                   # Documentation (in Chinese)
-│   ├── GAME_DESIGN.md      # Game design document
-│   ├── TECH_DESIGN.md      # Technical design document
-│   └── WEB_DESIGN.md       # Web UI/UX design document
+│       ├── agent.proto
+│       └── common.proto
+├── docs/                   # Documentation
+│   ├── GAME_DESIGN.md      # Game design document (Chinese)
+│   ├── TECH_DESIGN.md      # Technical design document (Chinese)
+│   ├── WEB_DESIGN.md       # Web UI/UX design (legacy, see VISUAL_DESIGN.md)
+│   └── VISUAL_DESIGN.md    # Visual specification
 ├── docker-compose.yml      # Docker services configuration
 ├── Makefile               # Build automation
 ├── go.mod                 # Go module definition
@@ -75,12 +73,11 @@ make all
 # Build specific components
 make server        # Build server binary to bin/server
 make cli           # Build CLI binary to bin/cli
-make web           # Build web production bundle
+make godot-web     # Export Godot web frontend to server/cmd/server/web/
 
 # Development mode
 make dev-server    # Run server with go run
 make dev-cli       # Run CLI with go run
-make dev-web       # Run web dev server (port 3000)
 
 # Code generation
 make proto         # Generate Go code from .proto files
@@ -90,7 +87,6 @@ make test          # Run Go tests
 
 # Dependencies
 make deps          # Download Go dependencies
-make web-deps      # Install npm dependencies
 
 # Cleanup
 make clean         # Remove build artifacts
@@ -105,22 +101,41 @@ make docker-down   # Stop services
 ### 1. Initial Setup
 
 ```bash
-# 1. Install Go 1.22+ and Node.js 18+
-# 2. Install Protocol Buffer compiler (protoc)
+# 1. Install Go 1.22+
+# 2. Install Godot 4.5+ (for web export)
+# 3. Install Protocol Buffer compiler (protoc) - optional
 
-# 3. Download dependencies
+# 4. Download dependencies
 make deps
-make web-deps
 
-# 4. Start infrastructure services
+# 5. Start infrastructure services (optional, currently using mock data)
 make docker-up
 
-# 5. Run in development mode
-# Terminal 1: make dev-server
-# Terminal 2: make dev-web
+# 6. Export Godot web frontend and run server
+make godot-web
+make dev-server
+
+# 7. Open browser at http://localhost:8080
 ```
 
-### 2. Protocol Buffer Changes
+### 2. Godot Web Development
+
+When modifying Godot scenes or scripts:
+
+```bash
+# Export web version
+cd godot-web && godot --headless --export-release "Web" ../server/cmd/server/web/index.html
+
+# Or use make
+make godot-web
+```
+
+Godot project structure:
+- `scenes/` - Scene files (.tscn)
+- `scripts/` - GDScript files (.gd)
+- `assets/` - 3D models, textures, materials
+
+### 3. Protocol Buffer Changes (Future)
 
 When modifying `.proto` files:
 
@@ -130,19 +145,6 @@ make proto         # Regenerate Go code
 
 Generated files are placed in `proto/agenttown/v1/*.pb.go`.
 
-### 3. Web Development
-
-The web frontend uses Vite with hot module replacement:
-
-```bash
-cd web
-npm run dev        # Development server on port 3000
-npm run build      # Production build
-npm run preview    # Preview production build
-```
-
-API proxy is configured in `vite.config.ts` to forward `/api` to `localhost:8080`.
-
 ## Architecture Details
 
 ### Current Implementation State
@@ -150,18 +152,21 @@ API proxy is configured in `vite.config.ts` to forward `/api` to `localhost:8080
 **Server** (`server/cmd/server/main.go`):
 - Currently a mock HTTP server serving hardcoded JSON data
 - Implements REST API endpoints under `/api/v1/`
-- Serves static web files from `./web/dist`
+- Serves static web files from `./web` (Godot export)
 - CORS enabled for all origins
+- Returns proper MIME types and COOP/COEP headers for Godot Web
 
 **CLI** (`cli/cmd/cli/main.go`):
 - Placeholder implementation
 - Intended for agent registration, login, and command execution
 
-**Web** (`web/src/`):
+**Godot Web** (`godot-web/`):
 - Fully functional 3D world viewer
-- Uses Three.js with React Three Fiber
-- Renders terrain (instanced mesh for performance), buildings, and agents
-- Auto-refreshes world data every 10 seconds
+- Uses Godot Engine 4.5+ with WebAssembly export
+- Renders terrain (MultiMesh for performance), buildings, and agents
+- Auto-refreshes world data every 5 seconds via HTTP API
+- HUD as separate CanvasLayer for UI elements
+- Name labels in screen space (not affected by 3D occlusion)
 
 ### API Endpoints (Current)
 
@@ -194,12 +199,12 @@ GET  /api/v1/agents/{id}/skills
 - Prefer explicit error handling
 - Package structure: `cmd/` for executables, `internal/` for private code
 
-### TypeScript/React
-- Strict TypeScript mode enabled
-- Use functional components with hooks
-- Path alias `@/` maps to `src/`
-- Prefer early returns over nested conditionals
-- Component files use PascalCase (e.g., `WorldScene.tsx`)
+### GDScript (Godot)
+- Use `snake_case` for functions and variables
+- Use `PascalCase` for class names and constants
+- Indent with tabs (Godot convention)
+- Type hints encouraged for function parameters and returns
+- Signal names use `snake_case` with past tense verbs (`player_died`)
 
 ### Protocol Buffers
 - Use proto3 syntax
@@ -215,9 +220,6 @@ make test
 
 # Run specific package
 go test -v ./server/...
-
-# Web linting
-cd web && npm run lint
 ```
 
 **Note**: The project currently has minimal test coverage. Tests should be added for:
@@ -236,11 +238,12 @@ GRPC_PORT=50051
 HTTP_PORT=8080
 ```
 
-### Web Environment Variables
+### Godot Export
 
-```bash
-VITE_API_URL=http://localhost:8080/api/v1
-```
+Export settings in `godot-web/export_presets.cfg`:
+- Export path: `../server/cmd/server/web/index.html`
+- Custom HTML shell: Default
+- Head include: None (headers set by Go server)
 
 ## Docker Services
 
@@ -250,7 +253,30 @@ The `docker-compose.yml` defines:
 |---------|-------|------|---------|
 | postgres | postgres:16-alpine | 5432 | Main database |
 | redis | redis:7-alpine | 6379 | Cache & sessions |
-| server | Built from server/Dockerfile | 8080, 50051 | Application server |
+
+**Note**: Currently using mock data; database not actively used.
+
+## GitIgnore Structure
+
+Each directory has its own `.gitignore`:
+
+- `.gitignore` (root) - IDE, OS, environment variables, logs
+- `godot-web/.gitignore` - `.godot/`, `.import/`, Godot cache
+- `server/cmd/server/.gitignore` - Web export artifacts (`web/`, `*.wasm`, `*.pck`)
+
+## Visual Design
+
+See `docs/VISUAL_DESIGN.md` for complete visual specification including:
+- Color palette (UI and world)
+- Typography
+- Building type colors
+- UI component styles
+
+Key colors:
+- UI Background: `#1a1a2e`
+- UI Accent: `#4fc3f7`
+- Sky: `#87ceeb`
+- Ground: `#c0c0c0`
 
 ## Important Design Decisions
 
@@ -266,26 +292,32 @@ The `docker-compose.yml` defines:
 
 ## Documentation References
 
-All detailed design documents are in `docs/` directory (written in Chinese):
+All detailed design documents are in `docs/` directory:
 
-- `GAME_DESIGN.md` - Game mechanics, world systems, agent lifecycle
-- `TECH_DESIGN.md` - Database schema, API design, service architecture
-- `WEB_DESIGN.md` - 3D rendering specs, UI/UX guidelines, color schemes
+- `GAME_DESIGN.md` - Game mechanics, world systems, agent lifecycle (Chinese)
+- `TECH_DESIGN.md` - Database schema, API design, service architecture (Chinese)
+- `WEB_DESIGN.md` - Legacy web design (React era), see VISUAL_DESIGN.md for current
+- `VISUAL_DESIGN.md` - Current visual specification
 
 ## Common Tasks
 
 ### Adding a New API Endpoint
 
-1. Define in proto file (if using gRPC) or add HTTP handler in server
-2. Update `web/src/api/client.ts` to add client method
-3. Add TypeScript types to `web/src/types/index.ts`
-4. Update component to use new API
+1. Add HTTP handler in `server/cmd/server/main.go`
+2. Update `godot-web/scripts/api_client.gd` to add client method
+3. Use the new API in appropriate scene/script
 
 ### Adding a New Terrain Type
 
-1. Update terrain generation logic (when implemented)
-2. Add color/material definition in `web/src/components/WorldScene.tsx`
-3. Update `BlockView` type if new fields needed
+1. Update terrain generation logic in server (when implemented)
+2. Add material definition in `godot-web/scripts/world_manager.gd`
+3. Update color in `docs/VISUAL_DESIGN.md`
+
+### Adding a New Building Type
+
+1. Update `buildingColors` in `godot-web/scripts/world_manager.gd`
+2. Add to legend UI in `godot-web/scenes/ui/hud.tscn`
+3. Update color specification in `docs/VISUAL_DESIGN.md`
 
 ### Database Schema Changes
 
@@ -299,8 +331,9 @@ All detailed design documents are in `docs/` directory (written in Chinese):
 - **Authentication**: JWT tokens after public-key signature verification
 - **TODO Token**: Separate scoped token for web TODO management
 - **Rate Limiting**: Should be implemented on API endpoints (currently TODO)
-- **Input Validation**: Validate all incoming protobuf/JSON data
+- **Input Validation**: Validate all incoming JSON data
 - **CORS**: Currently allows all origins (`*`) - restrict in production
+- **COOP/COEP**: Required headers set for Godot WebAssembly (SharedArrayBuffer)
 
 ## License
 
