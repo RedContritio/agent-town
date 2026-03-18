@@ -72,17 +72,17 @@ func (tg *TerrainGenerator) GenerateChunk(cx, cy int) map[string]Block {
 // getTerrainType 根据噪声值获取地形类型
 func (tg *TerrainGenerator) getTerrainType(value float64) string {
 	switch {
-	case value < -0.4:
+	case value < -0.35:
 		return TerrainWater
-	case value < -0.2:
+	case value < -0.15:
 		return TerrainSand
-	case value > 0.6:
+	case value > 0.5:
 		return TerrainHill
 	default:
 		// 在草地中随机分布农田
 		// 使用另一个噪声值来决定
-		farmlandNoise := tg.noise.Noise2D(value*10, value*10)
-		if farmlandNoise > 0.6 {
+		farmlandNoise := tg.noise.Noise2D(value*10+100, value*10+200)
+		if farmlandNoise > 0.5 {
 			return TerrainFarmland
 		}
 		return TerrainGrass
@@ -90,34 +90,41 @@ func (tg *TerrainGenerator) getTerrainType(value float64) string {
 }
 
 // getHeight 根据噪声值和地形类型计算高度
+// 使用连续的噪声值映射，产生更自然的高度变化
 func (tg *TerrainGenerator) getHeight(value float64, terrainType string) int {
 	switch terrainType {
 	case TerrainWater:
-		return 0
+		// 水底有轻微起伏，从 -2 到 -1（显示为 0）
+		return -2 + int((value+1)*0.5)
 	case TerrainSand:
-		return 0
+		// 沙滩从 0 开始，逐渐上升到 1
+		normalized := (value + 0.35) / 0.2 // 归一化到 0-1
+		return int(normalized * 1.5)
 	case TerrainGrass, TerrainFarmland:
-		// 基础高度 0-1
-		height := int((value + 0.2) * 2)
-		if height < 0 {
-			height = 0
-		}
-		if height > 1 {
+		// 草地/农田高度 1-3，基于噪声值平滑过渡
+		// value 范围大约是 -0.15 到 0.5
+		normalized := (value + 0.15) / 0.65 // 归一化到 0-1
+		height := 1 + int(normalized*2.5)   // 1 到 3
+		if height < 1 {
 			height = 1
-		}
-		return height
-	case TerrainHill:
-		// 山丘 2-3
-		height := int((value-0.6)*5) + 2
-		if height < 2 {
-			height = 2
 		}
 		if height > 3 {
 			height = 3
 		}
 		return height
+	case TerrainHill:
+		// 山丘 3-5，随噪声值增加
+		normalized := (value - 0.5) / 0.5 // 归一化到 0-1
+		height := 3 + int(normalized*3)   // 3 到 5
+		if height < 3 {
+			height = 3
+		}
+		if height > 5 {
+			height = 5
+		}
+		return height
 	default:
-		return 0
+		return 1
 	}
 }
 
