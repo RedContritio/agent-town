@@ -121,6 +121,10 @@ func (cm *ChunkManager) GetBlock(x, y int) (*Block, error) {
 		return &block, nil
 	}
 	
+	// Debug: log missing block
+	fmt.Printf("[GetBlock] Missing block at world(%d,%d) -> chunk(%d,%d) local(%d,%d) key=%s\n",
+		x, y, cx, cy, bx, by, key)
+	
 	// 如果区块已生成但地块不存在，返回默认草地
 	return &Block{
 		X:           x,

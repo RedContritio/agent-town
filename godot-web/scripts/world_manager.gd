@@ -82,17 +82,20 @@ func _create_material(color: Color, roughness: float = 0.9, specular: float = 0.
 
 func _create_water_material(color: Color) -> StandardMaterial3D:
 	var mat = StandardMaterial3D.new()
-	mat.albedo_color = Color(color.r, color.g, color.b, 0.65)  # 65% opacity
-	mat.roughness = 0.05  # Very smooth for reflections
-	mat.metallic = 0.1
-	mat.metallic_specular = 0.8  # High specular for water shine
+	# Make water more visible - 80% opacity with brighter color
+	var water_color = Color(color.r * 1.2, color.g * 1.2, color.b * 1.3, 0.80)
+	mat.albedo_color = water_color
+	mat.roughness = 0.1  # Slightly rough for more visible specular
+	mat.metallic = 0.0
+	mat.metallic_specular = 0.6
 	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	mat.shading_mode = BaseMaterial3D.SHADING_MODE_PER_PIXEL
 	mat.specular_mode = BaseMaterial3D.SPECULAR_SCHLICK_GGX
-	mat.disable_receive_shadows = true  # Water receives shadows differently
-	# Add some refraction-like effect
-	mat.refraction_enabled = true
-	mat.refraction_scale = 0.02
+	mat.disable_receive_shadows = false
+	# No refraction for better performance
+	mat.refraction_enabled = false
+	# Enable transparency sorting
+	mat.render_priority = -1  # Render water after opaque objects
 	return mat
 
 func _create_glass_material(color: Color) -> StandardMaterial3D:
@@ -220,12 +223,19 @@ func _update_terrain(blocks: Array):
 				var fill_type = "stone" if fill_y < -1 else "dirt"
 				_add_block_to_batch(blocks_by_type, fill_type, x, fill_y, z)
 	
+	# Debug: print block counts by type
+	print("=== Terrain blocks by type ===")
+	for type in blocks_by_type.keys():
+		print("  ", type, ": ", blocks_by_type[type].size(), " blocks")
+	
 	# Create MultiMesh instances for each type
 	for type in blocks_by_type.keys():
 		var type_blocks = blocks_by_type[type]
 		if type_blocks.size() == 0:
 			continue
-			
+		
+		print("Creating mesh for ", type, " with ", type_blocks.size(), " blocks")
+		
 		var mesh_instance = MultiMeshInstance3D.new()
 		
 		var multimesh = MultiMesh.new()

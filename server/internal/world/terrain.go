@@ -34,6 +34,9 @@ func (tg *TerrainGenerator) GenerateChunk(cx, cy int) map[string]Block {
 	blocks := make(map[string]Block)
 	cm := &ChunkManager{chunkSize: ChunkSize}
 	
+	minHeight, maxHeight := 999, -999
+	heightDist := make(map[int]int)
+	
 	for bx := 0; bx < ChunkSize; bx++ {
 		for by := 0; by < ChunkSize; by++ {
 			x, y := cm.ChunkToWorld(cx, cy, bx, by)
@@ -63,8 +66,16 @@ func (tg *TerrainGenerator) GenerateChunk(cx, cy int) map[string]Block {
 			
 			key := fmt.Sprintf("%d,%d", bx, by)
 			blocks[key] = block
+			
+			// Track stats
+			if height < minHeight { minHeight = height }
+			if height > maxHeight { maxHeight = height }
+			heightDist[height]++
 		}
 	}
+	
+	fmt.Printf("[Terrain] Generated chunk (%d,%d): height range [%d, %d], dist=%v\n", 
+		cx, cy, minHeight, maxHeight, heightDist)
 	
 	return blocks
 }
