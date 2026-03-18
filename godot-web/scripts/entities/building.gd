@@ -11,11 +11,19 @@ var building_type: String
 @onready var label: Label3D = $Label3D
 
 const TYPE_COLORS = {
-	"house": Color(0.63, 0.5, 0.38),
-	"shop": Color(0.8, 0.6, 0.4),
-	"farm": Color(0.5, 0.7, 0.3),
-	"factory": Color(0.5, 0.5, 0.55),
-	"storage": Color(0.6, 0.55, 0.5),
+	# From docs/VISUAL_DESIGN.md - Appendix B: buildingColors
+	"home": Color("#d4a574"),      # 暖木/居住感
+	"shop": Color("#e8a87c"),      # 暖色、亲和零售感
+	"bank": Color("#4a90d9"),      # 偏冷蓝、稳重金融感
+	"exchange": Color("#50c878"),  # 清爽绿、交易/流通感
+	"park": Color("#6b8e23"),      # 自然绿、开放空间
+	"office": Color("#8899aa"),    # 中性灰蓝、办公感
+	"cafe": Color("#c4956a"),      # 暖褐、休闲餐饮
+	# Legacy mappings for backward compatibility
+	"house": Color("#d4a574"),     # -> home
+	"farm": Color("#6b8e23"),      # -> park
+	"factory": Color("#8899aa"),   # -> office
+	"storage": Color("#998c80"),   # warehouse-like
 }
 
 func setup(data: Dictionary):

@@ -17,14 +17,21 @@ var terrain_height_map: Dictionary = {}  # "x,z" -> max_height (top of block)
 var pending_agents: Array = []  # Store agents until terrain is loaded
 
 func _ready():
-	# Create terrain materials with proper settings
-	terrain_materials["grass"] = _create_material(Color(0.4, 0.7, 0.3))
-	terrain_materials["road"] = _create_material(Color(0.5, 0.5, 0.5))
-	terrain_materials["water"] = _create_material(Color(0.3, 0.5, 0.8))
-	terrain_materials["farmland"] = _create_material(Color(0.8, 0.7, 0.4))
-	terrain_materials["sand"] = _create_material(Color(0.9, 0.8, 0.6))
-	terrain_materials["foundation"] = _create_material(Color(0.6, 0.6, 0.6))
-	terrain_materials["hill"] = _create_material(Color(0.4, 0.5, 0.3))
+	# Create terrain materials with visual design colors
+	# Colors from docs/VISUAL_DESIGN.md - Appendix B: tileColorMap
+	terrain_materials["grass"] = _create_material(Color("#5a8f63"))
+	terrain_materials["road"] = _create_material(Color("#c8b08a"))
+	terrain_materials["water"] = _create_material(Color("#4a92b8"))
+	terrain_materials["farmland"] = _create_material(Color("#9a7820"))
+	terrain_materials["sand"] = _create_material(Color("#d4c088"))
+	terrain_materials["foundation"] = _create_material(Color("#6a6a6a"))
+	terrain_materials["hill"] = _create_material(Color("#4a6a4a"))
+	terrain_materials["door"] = _create_material(Color("#b89955"))
+	terrain_materials["fence"] = _create_material(Color("#8a7254"))
+	terrain_materials["bridge"] = _create_material(Color("#a08050"))
+	terrain_materials["indoor_floor"] = _create_material(Color("#c4a882"))
+	terrain_materials["indoor_wall"] = _create_material(Color("#e8e0d0"))
+	terrain_materials["indoor_window"] = _create_material(Color("#add8e6"))
 	
 	# Connect API signals
 	api_client.world_info_received.connect(_on_world_info)
@@ -75,7 +82,7 @@ func _spawn_agents(agents: Array):
 		agent.setup_with_height(agent_data, ground_height)
 		agents_root.add_child(agent)
 		# Add name label
-		name_labels.add_label(agent, agent_data.get("name", "Agent"), Color.CYAN)
+		name_labels.add_label(agent, agent_data.get("name", "Agent"), Color("#4fc3f7"))
 
 func _on_map_received(map_data: Dictionary):
 	if map_data.has("blocks"):
@@ -156,4 +163,4 @@ func _update_buildings(buildings: Array):
 		building.setup(building_data)
 		buildings_root.add_child(building)
 		# Add name label
-		name_labels.add_label(building, building_data.get("name", "Building"), Color.CYAN)
+		name_labels.add_label(building, building_data.get("name", "Building"), Color("#4fc3f7"))

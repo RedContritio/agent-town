@@ -54,24 +54,38 @@ func _update_counts():
 	block_count_label.text = "Blocks: " + str(block_count)
 
 func _create_building_legend():
+	# From docs/VISUAL_DESIGN.md - Appendix B: buildingColors
 	var types = {
-		"house": Color(0.63, 0.5, 0.38),
-		"shop": Color(0.8, 0.6, 0.4),
-		"farm": Color(0.5, 0.7, 0.3),
-		"factory": Color(0.5, 0.5, 0.55),
-		"storage": Color(0.6, 0.55, 0.5),
+		"home": Color("#d4a574"),      # 暖木/居住感
+		"shop": Color("#e8a87c"),      # 暖色零售
+		"bank": Color("#4a90d9"),      # 冷蓝金融
+		"exchange": Color("#50c878"),  # 绿交易
+		"park": Color("#6b8e23"),      # 自然绿
+		"office": Color("#8899aa"),    # 灰蓝办公
+		"cafe": Color("#c4956a"),      # 暖褐餐饮
 	}
 	
 	for type_name in types.keys():
 		var hbox = HBoxContainer.new()
+		hbox.add_theme_constant_override("separation", 8)
 		
 		var color_rect = ColorRect.new()
 		color_rect.custom_minimum_size = Vector2(16, 16)
 		color_rect.color = types[type_name]
+		# Add rounded corners via stylebox
+		var rect_style = StyleBoxFlat.new()
+		rect_style.bg_color = types[type_name]
+		rect_style.corner_radius_top_left = 4
+		rect_style.corner_radius_top_right = 4
+		rect_style.corner_radius_bottom_left = 4
+		rect_style.corner_radius_bottom_right = 4
+		color_rect.add_theme_stylebox_override("panel", rect_style)
 		hbox.add_child(color_rect)
 		
 		var label = Label.new()
 		label.text = type_name.capitalize()
+		label.add_theme_color_override("font_color", Color("#e0e0e0"))
+		label.add_theme_font_size_override("font_size", 13)
 		hbox.add_child(label)
 		
 		building_legend.add_child(hbox)

@@ -1,0 +1,114 @@
+[gd_resource type="Theme" load_steps=9 format=3 uid="uid://ui_theme_main"]
+
+[sub_resource type="StyleBoxFlat" id="PanelMain"]
+bg_color = Color(0.102, 0.102, 0.18, 0.9)
+border_color = Color(0.2, 0.2, 0.27, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_left = 12
+corner_radius_bottom_right = 12
+corner_detail = 4
+shadow_color = Color(0, 0, 0, 0.3)
+shadow_size = 4
+
+[sub_resource type="StyleBoxFlat" id="PanelHeader"]
+bg_color = Color(0.31, 0.76, 0.97, 0.15)
+border_color = Color(0.31, 0.76, 0.97, 0.3)
+border_width_bottom = 1
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_detail = 4
+
+[sub_resource type="StyleBoxFlat" id="ButtonNormal"]
+bg_color = Color(0.15, 0.15, 0.22, 0.8)
+border_color = Color(0.31, 0.76, 0.97, 0.5)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_left = 6
+corner_radius_bottom_right = 6
+corner_detail = 4
+
+[sub_resource type="StyleBoxFlat" id="ButtonHover"]
+bg_color = Color(0.2, 0.25, 0.35, 0.9)
+border_color = Color(0.31, 0.76, 0.97, 0.8)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_left = 6
+corner_radius_bottom_right = 6
+corner_detail = 4
+
+[sub_resource type="StyleBoxFlat" id="ButtonPressed"]
+bg_color = Color(0.31, 0.76, 0.97, 0.3)
+border_color = Color(0.31, 0.76, 0.97, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_left = 6
+corner_radius_bottom_right = 6
+corner_detail = 4
+
+[sub_resource type="StyleBoxFlat" id="ButtonDisabled"]
+bg_color = Color(0.1, 0.1, 0.15, 0.5)
+border_color = Color(0.3, 0.3, 0.35, 0.3)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_left = 6
+corner_radius_bottom_right = 6
+corner_detail = 4
+
+[sub_resource type="StyleBoxFlat" id="Separator"]
+bg_color = Color(0.31, 0.76, 0.97, 0.2)
+corner_detail = 1
+
+[sub_resource type="StyleBoxFlat" id="LabelBackground"]
+bg_color = Color(0.102, 0.102, 0.18, 0.7)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_left = 4
+corner_radius_bottom_right = 4
+corner_detail = 4
+content_margin_left = 6
+content_margin_top = 3
+content_margin_right = 6
+content_margin_bottom = 3
+
+[resource]
+default_font_size = 14
+Label/colors/font_color = Color(0.878, 0.878, 0.878, 1)
+Label/colors/font_outline_color = Color(0, 0, 0, 1)
+Label/colors/font_shadow_color = Color(0, 0, 0, 0.5)
+Label/constants/line_spacing = 3
+Label/constants/outline_size = 0
+Label/constants/shadow_offset_x = 1
+Label/constants/shadow_offset_y = 1
+Label/styles/normal = SubResource("LabelBackground")
+Panel/styles/panel = SubResource("PanelMain")
+Button/colors/font_color = Color(0.878, 0.878, 0.878, 1)
+Button/colors/font_hover_color = Color(0.31, 0.76, 0.97, 1)
+Button/colors/font_pressed_color = Color(1, 1, 1, 1)
+Button/colors/font_disabled_color = Color(0.5, 0.5, 0.5, 0.5)
+Button/styles/normal = SubResource("ButtonNormal")
+Button/styles/hover = SubResource("ButtonHover")
+Button/styles/pressed = SubResource("ButtonPressed")
+Button/styles/disabled = SubResource("ButtonDisabled")
+HSeparator/styles/separator = SubResource("Separator")
+VSeparator/styles/separator = SubResource("Separator")

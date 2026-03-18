@@ -8,20 +8,26 @@
 
 [sub_resource type="Environment" id="Environment_default"]
 background_mode = 1
-background_color = Color(0.53, 0.81, 0.92, 1)
+background_color = Color(0.102, 0.102, 0.18, 1)
 ambient_light_source = 3
-ambient_light_color = Color(1, 1, 1, 1)
-ambient_light_energy = 0.4
+ambient_light_color = Color(0.9, 0.9, 0.95, 1)
+ambient_light_energy = 0.5
 tonemap_mode = 0
 ssao_enabled = false
 ssil_enabled = false
 glow_enabled = false
+fog_enabled = true
+fog_color = Color(0.102, 0.102, 0.18, 1)
+fog_light_color = Color(0.9, 0.9, 0.95, 1)
+fog_light_energy = 0.5
+fog_density = 0.008
+fog_aerial_perspective = 0.3
 
 [sub_resource type="PlaneMesh" id="PlaneMesh_ground"]
 size = Vector2(500, 500)
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_ground"]
-albedo_color = Color(0.75, 0.78, 0.8, 1)
+albedo_color = Color(0.102, 0.102, 0.18, 1)
 roughness = 1.0
 
 [node name="Main" type="Node3D"]
@@ -43,14 +49,15 @@ script = ExtResource("3_camera")
 
 [node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
 transform = Transform3D(0.707107, -0.5, 0.5, 0, 0.707107, 0.707107, -0.707107, -0.5, 0.5, 20, 20, 20)
-light_energy = 0.8
+light_energy = 0.9
 shadow_enabled = false
+light_color = Color(0.95, 0.95, 1, 1)
 
 [node name="Environment" type="WorldEnvironment" parent="."]
 environment = SubResource("Environment_default")
 
 [node name="BackgroundGround" type="MeshInstance3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.01, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -10, 0)
 mesh = SubResource("PlaneMesh_ground")
 surface_material_override/0 = SubResource("StandardMaterial3D_ground")
 
