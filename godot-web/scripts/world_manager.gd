@@ -13,7 +13,7 @@ const BUILDING_SCENE := preload("res://scenes/entities/building.tscn")
 
 var terrain_materials: Dictionary = {}
 var world_info: Dictionary = {}
-var terrain_height_map: Dictionary = {}  # "x,z" -> max_height (top of block)
+var terrain_height_map: Dictionary = {}  # "x,z" -> surface height (top of top block)
 var pending_agents: Array = []  # Store agents until terrain is loaded
 
 func _ready():
@@ -58,6 +58,10 @@ func _ready():
 	
 	# Indoor window: glass-like, transparent and reflective
 	terrain_materials["indoor_window"] = _create_glass_material(Color("#add8e6"))
+	
+	# Dirt/Stone for underground filling
+	terrain_materials["dirt"] = _create_material(Color("#5a4d3d"), 0.95, 0.0)
+	terrain_materials["stone"] = _create_material(Color("#6a6a6a"), 0.8, 0.05)
 	
 	# Connect API signals
 	api_client.world_info_received.connect(_on_world_info)
@@ -161,17 +165,67 @@ func _update_terrain(blocks: Array):
 	for child in terrain_root.get_children():
 		child.queue_free()
 	
-	# Group blocks by type
-	var blocks_by_type: Dictionary = {}
-	for block in blocks:
-		var type = block.get("terrainType", "grass")
-		if not blocks_by_type.has(type):
-			blocks_by_type[type] = []
-		blocks_by_type[type].append(block)
+	# Build a height map from surface blocks
+	# Key: "x,z" -> {height: int, type: string}
+	var surface_blocks: Dictionary = {}
 	
-	# Create MultiMesh for each terrain type (performance optimization)
+	for block in blocks:
+		var pos = block.get("position", {})
+		var x = pos.get("x", 0)
+		var y = pos.get("z", 0)  # height (API z is height)
+		var z = pos.get("y", 0)  # API y is z in Godot
+		var type = block.get("terrainType", "grass")
+		
+		var key = "%d,%d" % [int(x), int(z)]
+		
+		# Track the highest block at this x,z position
+		if not surface_blocks.has(key):
+			surface_blocks[key] = {"x": x, "y": y, "z": z, "type": type}
+		else:
+			var existing = surface_blocks[key]
+			if y > existing.y:
+				surface_blocks[key] = {"x": x, "y": y, "z": z, "type": type}
+		
+		# Store surface height for agent spawning
+		var block_top = float(y) + 1.0
+		var current_top = terrain_height_map.get(key, -9999.0)
+		if block_top > current_top:
+			terrain_height_map[key] = block_top
+	
+	# Now we need to create columns of blocks from bottom up to surface
+	# For performance, we'll use MultiMesh for each type
+	
+	# Collect blocks by type for rendering
+	var blocks_by_type: Dictionary = {}
+	
+	for key in surface_blocks.keys():
+		var surface = surface_blocks[key]
+		var x = surface.x
+		var surface_y = surface.y
+		var z = surface.z
+		var surface_type = surface.type
+		
+		# For water, render at level 0 as a surface
+		# For other types, render a column from y=0 up to surface_y
+		if surface_type == "water":
+			# Water is special: render at y=0 (surface level)
+			_add_block_to_batch(blocks_by_type, "water", x, 0, z)
+		else:
+			# For land, render surface block at surface_y
+			_add_block_to_batch(blocks_by_type, surface_type, x, surface_y, z)
+			
+			# Fill below with dirt/stone if above ground level
+			# This creates the "column" look
+			for fill_y in range(0, surface_y):
+				var fill_type = "stone" if fill_y < -1 else "dirt"
+				_add_block_to_batch(blocks_by_type, fill_type, x, fill_y, z)
+	
+	# Create MultiMesh instances for each type
 	for type in blocks_by_type.keys():
 		var type_blocks = blocks_by_type[type]
+		if type_blocks.size() == 0:
+			continue
+			
 		var mesh_instance = MultiMeshInstance3D.new()
 		
 		var multimesh = MultiMesh.new()
@@ -185,26 +239,18 @@ func _update_terrain(blocks: Array):
 		
 		for i in range(type_blocks.size()):
 			var block = type_blocks[i]
-			var pos = block.get("position", {})
-			var x = pos.get("x", 0)
-			var y = pos.get("z", 0)  # height (API z is height)
-			var z = pos.get("y", 0)  # API y is z in Godot
-			
-			# Update height map - keep maximum GROUND TOP height for each x,z
-			# Block is 1m tall, centered at y+0.5, so top is at y+1
-			var block_top = float(y) + 1.0
-			var key = "%d,%d" % [int(x), int(z)]
-			var current_height = terrain_height_map.get(key, -9999.0)
-			if block_top > current_height:
-				terrain_height_map[key] = block_top
-			
 			var transform = Transform3D()
-			transform.origin = Vector3(x, y + 0.5, z)
+			transform.origin = Vector3(block.x, block.y + 0.5, block.z)
 			multimesh.set_instance_transform(i, transform)
 		
 		mesh_instance.multimesh = multimesh
 		mesh_instance.material_override = terrain_materials.get(type, terrain_materials["grass"])
 		terrain_root.add_child(mesh_instance)
+
+func _add_block_to_batch(batch: Dictionary, type: String, x: int, y: int, z: int):
+	if not batch.has(type):
+		batch[type] = []
+	batch[type].append({"x": x, "y": y, "z": z})
 
 func _update_buildings(buildings: Array):
 	# Clear existing buildings and labels
