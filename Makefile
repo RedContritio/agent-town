@@ -1,4 +1,4 @@
-.PHONY: all build proto clean test server cli web web-deps
+.PHONY: all build proto clean test server cli godot-web docker-up docker-down
 
 # Go settings
 GOCMD=go
@@ -13,13 +13,14 @@ PROTOC=protoc
 PROTO_DIR=proto
 PROTO_OUT=proto
 
-# Node settings
-NPM=npm
+# Godot settings
+GODOT=godot
+GODOT_PROJECT=godot-web
 
 all: proto build
 
 # Build all binaries
-build: server cli web
+build: server cli
 
 # Build server binary
 server:
@@ -29,13 +30,15 @@ server:
 cli:
 	cd cli/cmd/cli && $(GOBUILD) -o ../../../bin/cli .
 
-# Build web (production)
-web:
-	cd web && $(NPM) run build
+# Export Godot web frontend
+godot-web:
+	mkdir -p server/cmd/server/web
+	cd $(GODOT_PROJECT) && $(GODOT) --headless --export-release "Web" ../server/cmd/server/web/index.html
 
-# Install web dependencies
+# Install web dependencies (legacy, kept for compatibility)
 web-deps:
-	cd web && $(NPM) install
+	@echo "Web frontend now uses Godot. No npm dependencies needed."
+	@echo "Use 'make godot-web' to export the web frontend."
 
 # Generate protobuf code
 proto:
@@ -50,7 +53,7 @@ proto:
 clean:
 	$(GOCLEAN)
 	rm -rf bin/
-	rm -rf web/dist/
+	rm -rf server/cmd/server/web/
 	rm -f $(PROTO_OUT)/agenttown/v1/*.pb.go
 
 # Run tests
@@ -78,13 +81,7 @@ dev-server:
 dev-cli:
 	cd cli/cmd/cli && $(GOCMD) run .
 
-dev-web:
-	cd web && $(NPM) run dev
-
 # Docker commands
-docker-build:
-	docker-compose build
-
 docker-up:
 	docker-compose up -d
 
@@ -99,11 +96,11 @@ help:
 	@echo "  make build        - Build all binaries"
 	@echo "  make server       - Build server binary"
 	@echo "  make cli          - Build CLI binary"
-	@echo "  make web          - Build web (production)"
-	@echo "  make web-deps     - Install web dependencies"
+	@echo "  make godot-web    - Export Godot web frontend"
 	@echo "  make test         - Run tests"
 	@echo "  make clean        - Clean build artifacts"
 	@echo "  make deps         - Download Go dependencies"
 	@echo "  make dev-server   - Run server in development mode"
 	@echo "  make dev-cli      - Run CLI in development mode"
-	@echo "  make dev-web      - Run web in development mode"
+	@echo "  make docker-up    - Start Docker services"
+	@echo "  make docker-down  - Stop Docker services"

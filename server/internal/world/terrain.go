@@ -2,7 +2,6 @@ package world
 
 import (
 	"fmt"
-	"math"
 )
 
 // 地形类型常量

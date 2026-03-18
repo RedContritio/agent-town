@@ -1,0 +1,5 @@
+<svg height="128" width="128" xmlns="http://www.w3.org/2000/svg">
+  <rect fill="#4fc3f7" height="128" rx="16" width="128"/>
+  <circle cx="64" cy="64" fill="#0d1b2a" r="48"/>
+  <text fill="#4fc3f7" font-family="sans-serif" font-size="48" font-weight="bold" text-anchor="middle" x="64" y="80">AT</text>
+</svg>

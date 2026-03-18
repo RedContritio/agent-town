@@ -1,0 +1,62 @@
+[gd_scene load_steps=8 format=3 uid="uid://c4s8k8qyq4f3v"]
+
+[ext_resource type="Script" path="res://scripts/world_manager.gd" id="1_world"]
+[ext_resource type="Script" path="res://scripts/api_client.gd" id="2_api"]
+[ext_resource type="Script" path="res://scripts/camera_controller.gd" id="3_camera"]
+[ext_resource type="PackedScene" uid="uid://hud_scene" path="res://scenes/ui/hud.tscn" id="4_hud"]
+[ext_resource type="Script" path="res://scripts/name_label_manager.gd" id="5_name_labels"]
+
+[sub_resource type="Environment" id="Environment_default"]
+background_mode = 1
+background_color = Color(0.53, 0.81, 0.92, 1)
+ambient_light_source = 3
+ambient_light_color = Color(1, 1, 1, 1)
+ambient_light_energy = 0.4
+tonemap_mode = 0
+ssao_enabled = false
+ssil_enabled = false
+glow_enabled = false
+
+[sub_resource type="PlaneMesh" id="PlaneMesh_ground"]
+size = Vector2(500, 500)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_ground"]
+albedo_color = Color(0.75, 0.78, 0.8, 1)
+roughness = 1.0
+
+[node name="Main" type="Node3D"]
+
+[node name="WorldManager" type="Node3D" parent="."]
+script = ExtResource("1_world")
+
+[node name="ApiClient" type="Node" parent="WorldManager"]
+script = ExtResource("2_api")
+
+[node name="Terrain" type="Node3D" parent="WorldManager"]
+
+[node name="Buildings" type="Node3D" parent="WorldManager"]
+
+[node name="Agents" type="Node3D" parent="WorldManager"]
+
+[node name="Camera3D" type="Camera3D" parent="."]
+script = ExtResource("3_camera")
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.707107, -0.5, 0.5, 0, 0.707107, 0.707107, -0.707107, -0.5, 0.5, 20, 20, 20)
+light_energy = 0.8
+shadow_enabled = false
+
+[node name="Environment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_default")
+
+[node name="BackgroundGround" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.01, 0)
+mesh = SubResource("PlaneMesh_ground")
+surface_material_override/0 = SubResource("StandardMaterial3D_ground")
+
+[node name="CanvasLayer" type="CanvasLayer" parent="."]
+
+[node name="HUD" parent="CanvasLayer" instance=ExtResource("4_hud")]
+
+[node name="NameLabels" type="CanvasLayer" parent="."]
+script = ExtResource("5_name_labels")

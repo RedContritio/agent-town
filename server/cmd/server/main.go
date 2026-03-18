@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/RedContritio/agent-town/server/internal/world"
@@ -166,20 +167,20 @@ func enableCORS(next http.HandlerFunc) http.HandlerFunc {
 
 // Handlers
 func getWorldInfo(w http.ResponseWriter, r *http.Request) {
-	w := world.GetWorld()
-	if w == nil {
+	gameWorld := world.GetWorld()
+	if gameWorld == nil {
 		http.Error(w, "World not initialized", http.StatusInternalServerError)
 		return
 	}
 
 	info := WorldInfo{
-		ID:            w.ID,
+		ID:            gameWorld.ID,
 		Name:          "Agent Town",
-		Seed:          fmt.Sprintf("%d", w.Seed),
+		Seed:          fmt.Sprintf("%d", gameWorld.Seed),
 		TimeSpeed:     5,
 		CurrentTime:   time.Now().Format(time.RFC3339),
-		AgentCount:    int64(len(w.InitialAgents)),
-		BuildingCount: int64(len(w.InitialBuildings)),
+		AgentCount:    int64(len(gameWorld.InitialAgents)),
+		BuildingCount: int64(len(gameWorld.InitialBuildings)),
 	}
 	json.NewEncoder(w).Encode(info)
 }
@@ -443,9 +444,30 @@ func main() {
 		}
 	}))
 
-	// Static files for web
-	fs := http.FileServer(http.Dir("./web/dist"))
-	http.Handle("/", fs)
+	// Static files for web with proper MIME types and COOP/COEP headers for Godot
+	fs := http.FileServer(http.Dir("server/cmd/server/web"))
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		// Set correct MIME types for Godot web export files
+		if strings.HasSuffix(r.URL.Path, ".js") {
+			w.Header().Set("Content-Type", "application/javascript")
+		} else if strings.HasSuffix(r.URL.Path, ".wasm") {
+			w.Header().Set("Content-Type", "application/wasm")
+		} else if strings.HasSuffix(r.URL.Path, ".pck") {
+			w.Header().Set("Content-Type", "application/octet-stream")
+		} else if strings.HasSuffix(r.URL.Path, ".html") {
+			w.Header().Set("Content-Type", "text/html")
+		}
+		
+		// Cross-Origin Isolation headers required for Godot Web (SharedArrayBuffer)
+		w.Header().Set("Cross-Origin-Embedder-Policy", "require-corp")
+		w.Header().Set("Cross-Origin-Opener-Policy", "same-origin")
+		
+		// Add cache control headers to prevent caching
+		w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
+		w.Header().Set("Pragma", "no-cache")
+		w.Header().Set("Expires", "0")
+		fs.ServeHTTP(w, r)
+	})
 
 	port := "8080"
 	fmt.Printf("Server starting on http://localhost:%s\n", port)

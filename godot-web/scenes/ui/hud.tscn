@@ -1,0 +1,109 @@
+[gd_scene load_steps=2 format=3 uid="uid://hud_scene"]
+
+[ext_resource type="Script" path="res://scripts/ui/hud.gd" id="1_script"]
+
+[node name="HUD" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_script")
+
+[node name="TopLeftPanel" type="Panel" parent="."]
+layout_mode = 0
+offset_left = 20.0
+offset_top = 20.0
+offset_right = 250.0
+offset_bottom = 150.0
+
+[node name="VBoxContainer" type="VBoxContainer" parent="TopLeftPanel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 10.0
+offset_top = 10.0
+offset_right = -10.0
+offset_bottom = -10.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="TitleLabel" type="Label" parent="TopLeftPanel/VBoxContainer"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "Agent Town"
+horizontal_alignment = 1
+
+[node name="HSeparator" type="HSeparator" parent="TopLeftPanel/VBoxContainer"]
+layout_mode = 2
+
+[node name="AgentCountLabel" type="Label" parent="TopLeftPanel/VBoxContainer"]
+layout_mode = 2
+text = "Agents: 0"
+
+[node name="BuildingCountLabel" type="Label" parent="TopLeftPanel/VBoxContainer"]
+layout_mode = 2
+text = "Buildings: 0"
+
+[node name="BlockCountLabel" type="Label" parent="TopLeftPanel/VBoxContainer"]
+layout_mode = 2
+text = "Blocks: 0"
+
+[node name="SeedLabel" type="Label" parent="TopLeftPanel/VBoxContainer"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 12
+text = "Seed: -"
+
+[node name="TopRightPanel" type="Panel" parent="."]
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -180.0
+offset_top = 20.0
+offset_right = -20.0
+offset_bottom = 200.0
+grow_horizontal = 0
+
+[node name="VBoxContainer" type="VBoxContainer" parent="TopRightPanel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 10.0
+offset_top = 10.0
+offset_right = -10.0
+offset_bottom = -10.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="TitleLabel" type="Label" parent="TopRightPanel/VBoxContainer"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "Building Types"
+horizontal_alignment = 1
+
+[node name="HSeparator" type="HSeparator" parent="TopRightPanel/VBoxContainer"]
+layout_mode = 2
+
+[node name="BuildingLegend" type="VBoxContainer" parent="TopRightPanel/VBoxContainer"]
+layout_mode = 2
+
+[node name="StatusLabel" type="Label" parent="."]
+layout_mode = 1
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -150.0
+offset_top = -40.0
+offset_right = 150.0
+offset_bottom = -20.0
+grow_horizontal = 2
+grow_vertical = 0
+text = "Connecting..."
+horizontal_alignment = 1
+vertical_alignment = 1
