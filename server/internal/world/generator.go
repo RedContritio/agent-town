@@ -28,6 +28,7 @@ func NewWorldGenerator(seed int64) *WorldGenerator {
 }
 
 // GenerateInitialWorld 生成初始世界
+// 生成 3×3 区块（9 个区块）和四个初始建筑
 func (wg *WorldGenerator) GenerateInitialWorld() (*World, error) {
 	world := &World{
 		ID:        fmt.Sprintf("world-%d", time.Now().Unix()),
@@ -38,50 +39,7 @@ func (wg *WorldGenerator) GenerateInitialWorld() (*World, error) {
 	// 1. 生成初始四建筑
 	world.InitialBuildings = wg.buildings.GenerateInitialBuildings()
 	
-	// 2. 生成初始区块 (0,0) 的地形
-	initialChunk, err := wg.GenerateChunk(0, 0)
-	if err != nil {
-		return nil, err
-	}
-	
-	// 3. 应用道路到初始区块
-	roads := wg.roads.GenerateInitialRoads()
-	world.InitialRoads = roads
-	
-	for _, road := range roads {
-		// 将道路坐标转换为区块内坐标
-		bx, by := road.X+16, road.Y+16 // 偏移到 0-31 范围
-		if bx >= 0 && bx < ChunkSize && by >= 0 && by < ChunkSize {
-			key := fmt.Sprintf("%d,%d", bx, by)
-			if block, ok := initialChunk.Blocks[key]; ok {
-				block.TerrainType = TerrainRoad
-				initialChunk.Blocks[key] = block
-			}
-		}
-	}
-	
-	// 4. 应用建筑地基到初始区块
-	for _, building := range world.InitialBuildings {
-		// 将建筑区域设为地基
-		for dx := 0; dx < building.Width; dx++ {
-			for dy := 0; dy < building.Depth; dy++ {
-				x := building.Anchor.X + dx
-				y := building.Anchor.Y + dy
-				bx, by := x+16, y+16
-				if bx >= 0 && bx < ChunkSize && by >= 0 && by < ChunkSize {
-					key := fmt.Sprintf("%d,%d", bx, by)
-					if block, ok := initialChunk.Blocks[key]; ok {
-						block.TerrainType = TerrainFoundation
-						block.Z = 0
-						block.Height = 0
-						initialChunk.Blocks[key] = block
-					}
-				}
-			}
-		}
-	}
-	
-	// 保存初始区块
+	// 初始化区块管理器
 	if world.ChunkManager == nil {
 		world.ChunkManager = &ChunkManager{
 			seed:      wg.seed,
@@ -90,7 +48,65 @@ func (wg *WorldGenerator) GenerateInitialWorld() (*World, error) {
 			chunkSize: ChunkSize,
 		}
 	}
-	world.ChunkManager.cache["0,0"] = initialChunk
+	
+	// 2. 生成 3×3 区块（中心区块 (0,0) 和周围 8 个区块）
+	chunkCoords := [][2]int{
+		{-1, -1}, {0, -1}, {1, -1},
+		{-1, 0},  {0, 0},  {1, 0},
+		{-1, 1},  {0, 1},  {1, 1},
+	}
+	
+	for _, coord := range chunkCoords {
+		cx, cy := coord[0], coord[1]
+		chunk, err := wg.GenerateChunk(cx, cy)
+		if err != nil {
+			return nil, err
+		}
+		world.ChunkManager.cache[fmt.Sprintf("%d,%d", cx, cy)] = chunk
+	}
+	
+	// 3. 应用道路到所有区块
+	roads := wg.roads.GenerateInitialRoads()
+	world.InitialRoads = roads
+	
+	for _, road := range roads {
+		// 获取道路所在的区块坐标和区块内坐标
+		cx, cy, bx, by := world.ChunkManager.WorldToChunk(road.X, road.Y)
+		chunkKey := fmt.Sprintf("%d,%d", cx, cy)
+		
+		if chunk, ok := world.ChunkManager.cache[chunkKey]; ok {
+			key := fmt.Sprintf("%d,%d", bx, by)
+			if block, ok := chunk.Blocks[key]; ok {
+				block.TerrainType = TerrainRoad
+				chunk.Blocks[key] = block
+			}
+		}
+	}
+	
+	// 4. 应用建筑地基到对应区块
+	for _, building := range world.InitialBuildings {
+		// 将建筑区域设为地基
+		for dx := 0; dx < building.Width; dx++ {
+			for dy := 0; dy < building.Depth; dy++ {
+				x := building.Anchor.X + dx
+				y := building.Anchor.Y + dy
+				
+				// 转换为区块坐标
+				cx, cy, bx, by := world.ChunkManager.WorldToChunk(x, y)
+				chunkKey := fmt.Sprintf("%d,%d", cx, cy)
+				
+				if chunk, ok := world.ChunkManager.cache[chunkKey]; ok {
+					key := fmt.Sprintf("%d,%d", bx, by)
+					if block, ok := chunk.Blocks[key]; ok {
+						block.TerrainType = TerrainFoundation
+						block.Z = 0
+						block.Height = 0
+						chunk.Blocks[key] = block
+					}
+				}
+			}
+		}
+	}
 	
 	// 5. 生成调试 NPC（在建筑附近）
 	spawnPoints := []Position{
