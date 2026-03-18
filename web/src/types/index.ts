@@ -34,6 +34,7 @@ export interface BlockView {
 export interface BuildingView {
   id: string;
   name: string;
+  type: string;
   ownerId: string;
   anchor: Position;
   width: number;

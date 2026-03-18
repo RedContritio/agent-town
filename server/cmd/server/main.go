@@ -6,16 +6,18 @@ import (
 	"log"
 	"net/http"
 	"time"
+
+	"github.com/RedContritio/agent-town/server/internal/world"
 )
 
-// Mock data structures
+// API response structures
 type Position struct {
 	X int `json:"x"`
 	Y int `json:"y"`
 	Z int `json:"z"`
 }
 
-type Agent struct {
+type AgentView struct {
 	ID         string   `json:"id"`
 	Name       string   `json:"name"`
 	Position   Position `json:"position"`
@@ -42,6 +44,7 @@ type BlockView struct {
 type BuildingView struct {
 	ID       string   `json:"id"`
 	Name     string   `json:"name"`
+	Type     string   `json:"type"`
 	OwnerID  string   `json:"ownerId"`
 	Anchor   Position `json:"anchor"`
 	Width    int      `json:"width"`
@@ -54,18 +57,18 @@ type VisibleArea struct {
 	Center    Position       `json:"center"`
 	Radius    int            `json:"radius"`
 	Blocks    []BlockView    `json:"blocks"`
-	Agents    []Agent        `json:"agents"`
+	Agents    []AgentView    `json:"agents"`
 	Buildings []BuildingView `json:"buildings"`
 }
 
 type WorldInfo struct {
-	ID             string `json:"id"`
-	Name           string `json:"name"`
-	Seed           string `json:"seed"`
-	TimeSpeed      int    `json:"timeSpeed"`
-	CurrentTime    string `json:"currentTime"`
-	AgentCount     int64  `json:"agentCount"`
-	BuildingCount  int64  `json:"buildingCount"`
+	ID            string `json:"id"`
+	Name          string `json:"name"`
+	Seed          string `json:"seed"`
+	TimeSpeed     int    `json:"timeSpeed"`
+	CurrentTime   string `json:"currentTime"`
+	AgentCount    int64  `json:"agentCount"`
+	BuildingCount int64  `json:"buildingCount"`
 }
 
 type WorldTime struct {
@@ -90,76 +93,289 @@ type Todo struct {
 }
 
 type Skill struct {
-	Type       string `json:"type"`
-	Level      int    `json:"level"`
-	Exp        int    `json:"exp"`
-	ExpToNext  int    `json:"expToNext"`
+	Type      string `json:"type"`
+	Level     int    `json:"level"`
+	Exp       int    `json:"exp"`
+	ExpToNext int    `json:"expToNext"`
 }
 
-// Mock data
-var mockAgents = []Agent{
-	{
-		ID:         "agent-001",
-		Name:       "Alice",
-		Position:   Position{X: 0, Y: 0, Z: 0},
-		Facing:     0,
-		HP:         100,
-		MaxHP:      100,
-		Stamina:    80,
-		MaxStamina: 100,
-		Hunger:     90,
-		MaxHunger:  100,
-		Balance:    1000,
-		IsOnline:   true,
-		InBattle:   false,
-	},
-	{
-		ID:         "agent-002",
-		Name:       "Bob",
-		Position:   Position{X: 5, Y: 0, Z: 3},
-		Facing:     1,
-		HP:         100,
-		MaxHP:      100,
-		Stamina:    100,
-		MaxStamina: 100,
-		Hunger:     100,
-		MaxHunger:  100,
-		Balance:    500,
-		IsOnline:   true,
-		InBattle:   false,
-	},
+type Event struct {
+	ID        string `json:"id"`
+	Type      string `json:"type"`
+	Data      string `json:"data"`
+	CreatedAt string `json:"createdAt"`
 }
 
-var mockBuildings = []BuildingView{
-	{
-		ID:      "building-001",
-		Name:    "Town Hall",
-		OwnerID: "government",
-		Anchor:  Position{X: -5, Y: 0, Z: -5},
-		Width:   4,
-		Depth:   4,
-		Height:  2,
-	},
-	{
-		ID:      "building-002",
-		Name:    "Shop",
-		OwnerID: "government",
-		Anchor:  Position{X: 5, Y: 0, Z: -5},
-		Width:   3,
-		Depth:   3,
-		Height:  1,
-	},
-	{
-		ID:      "building-003",
-		Name:    "Alice's House",
-		OwnerID: "agent-001",
-		Anchor:  Position{X: 2, Y: 0, Z: 2},
-		Width:   2,
-		Depth:   2,
-		Height:  1,
-	},
+// Convert internal world types to API types
+func convertAgent(agent world.Agent) AgentView {
+	return AgentView{
+		ID:         agent.ID,
+		Name:       agent.Name,
+		Position:   Position{X: agent.Position.X, Y: agent.Position.Y, Z: agent.Position.Z},
+		Facing:     agent.Facing,
+		HP:         agent.HP,
+		MaxHP:      agent.MaxHP,
+		Stamina:    agent.Stamina,
+		MaxStamina: agent.MaxStamina,
+		Hunger:     agent.Hunger,
+		MaxHunger:  agent.MaxHunger,
+		Balance:    agent.Balance,
+		IsOnline:   agent.IsOnline,
+		InBattle:   agent.InBattle,
+	}
 }
 
+func convertBuilding(building world.Building) BuildingView {
+	return BuildingView{
+		ID:      building.ID,
+		Name:    building.Name,
+		Type:    building.Type,
+		OwnerID: building.OwnerID,
+		Anchor:  Position{X: building.Anchor.X, Y: building.Anchor.Y, Z: building.Anchor.Z},
+		Width:   building.Width,
+		Depth:   building.Depth,
+		Height:  building.Height,
+	}
+}
+
+func convertBlock(block world.Block) BlockView {
+	return BlockView{
+		Position:       Position{X: block.X, Y: block.Y, Z: block.Z},
+		Height:         block.Height,
+		TerrainType:    block.TerrainType,
+		ResourceType:   block.ResourceType,
+		ResourceAmount: block.ResourceAmount,
+	}
+}
+
+// CORS middleware
+func enableCORS(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, X-Todo-Token")
+
+		if r.Method == "OPTIONS" {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+
+		next(w, r)
+	}
+}
+
+// Handlers
+func getWorldInfo(w http.ResponseWriter, r *http.Request) {
+	w := world.GetWorld()
+	if w == nil {
+		http.Error(w, "World not initialized", http.StatusInternalServerError)
+		return
+	}
+
+	info := WorldInfo{
+		ID:            w.ID,
+		Name:          "Agent Town",
+		Seed:          fmt.Sprintf("%d", w.Seed),
+		TimeSpeed:     5,
+		CurrentTime:   time.Now().Format(time.RFC3339),
+		AgentCount:    int64(len(w.InitialAgents)),
+		BuildingCount: int64(len(w.InitialBuildings)),
+	}
+	json.NewEncoder(w).Encode(info)
+}
+
+func getWorldTime(w http.ResponseWriter, r *http.Request) {
+	now := time.Now()
+	worldTime := WorldTime{
+		Timestamp: now.Format(time.RFC3339),
+		Year:      1,
+		Month:     3,
+		Day:       15,
+		Hour:      now.Hour(),
+		Minute:    now.Minute(),
+		Season:    "spring",
+		IsDaytime: now.Hour() >= 6 && now.Hour() < 18,
+	}
+	json.NewEncoder(w).Encode(worldTime)
+}
+
+func getWorldMap(w http.ResponseWriter, r *http.Request) {
+	centerX := 0
+	centerY := 0
+	radius := 20
+
+	// Parse query params
+	if x := r.URL.Query().Get("x"); x != "" {
+		fmt.Sscanf(x, "%d", &centerX)
+	}
+	if y := r.URL.Query().Get("y"); y != "" {
+		fmt.Sscanf(y, "%d", &centerY)
+	}
+	if r := r.URL.Query().Get("radius"); r != "" {
+		fmt.Sscanf(r, "%d", &radius)
+	}
+
+	wld := world.GetWorld()
+	if wld == nil {
+		http.Error(w, "World not initialized", http.StatusInternalServerError)
+		return
+	}
+
+	// Get blocks from chunk manager
+	blocks := []BlockView{}
+	wldBlocks, err := wld.GetBlocksInRadius(centerX, centerY, radius)
+	if err == nil {
+		for _, b := range wldBlocks {
+			blocks = append(blocks, convertBlock(b))
+		}
+	}
+
+	// Get agents
+	agents := []AgentView{}
+	for _, a := range wld.InitialAgents {
+		// Only return agents within radius
+		dx := a.Position.X - centerX
+		dy := a.Position.Y - centerY
+		if dx*dx+dy*dy <= radius*radius {
+			agents = append(agents, convertAgent(a))
+		}
+	}
+
+	// Get buildings
+	buildings := []BuildingView{}
+	for _, b := range wld.InitialBuildings {
+		// Only return buildings within radius
+		dx := b.Anchor.X - centerX
+		dy := b.Anchor.Y - centerY
+		if dx*dx+dy*dy <= radius*radius {
+			buildings = append(buildings, convertBuilding(b))
+		}
+	}
+
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"center":    Position{X: centerX, Y: centerY, Z: 0},
+		"radius":    radius,
+		"blocks":    blocks,
+		"agents":    agents,
+		"buildings": buildings,
+	})
+}
+
+func getAgents(w http.ResponseWriter, r *http.Request) {
+	wld := world.GetWorld()
+	if wld == nil {
+		http.Error(w, "World not initialized", http.StatusInternalServerError)
+		return
+	}
+
+	agents := []AgentView{}
+	for _, a := range wld.InitialAgents {
+		agents = append(agents, convertAgent(a))
+	}
+	json.NewEncoder(w).Encode(agents)
+}
+
+func getAgent(w http.ResponseWriter, r *http.Request) {
+	agentID := r.URL.Path[len("/api/v1/agents/"):]
+	wld := world.GetWorld()
+	if wld == nil {
+		http.Error(w, "World not initialized", http.StatusInternalServerError)
+		return
+	}
+
+	for _, agent := range wld.InitialAgents {
+		if agent.ID == agentID {
+			json.NewEncoder(w).Encode(convertAgent(agent))
+			return
+		}
+	}
+	http.NotFound(w, r)
+}
+
+func getAgentStatus(w http.ResponseWriter, r *http.Request) {
+	agentID := r.URL.Path[len("/api/v1/agents/"):len(r.URL.Path)-len("/status")]
+	wld := world.GetWorld()
+	if wld == nil {
+		http.Error(w, "World not initialized", http.StatusInternalServerError)
+		return
+	}
+
+	for _, agent := range wld.InitialAgents {
+		if agent.ID == agentID {
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"agentId":       agent.ID,
+				"worldTime":     time.Now().Format(time.RFC3339),
+				"stamina":       agent.Stamina,
+				"hunger":        agent.Hunger,
+				"inBattle":      agent.InBattle,
+				"pendingEvents": []Event{},
+			})
+			return
+		}
+	}
+	http.NotFound(w, r)
+}
+
+func getVisibleArea(w http.ResponseWriter, r *http.Request) {
+	agentID := r.URL.Path[len("/api/v1/agents/"):len(r.URL.Path)-len("/visible-area")]
+	wld := world.GetWorld()
+	if wld == nil {
+		http.Error(w, "World not initialized", http.StatusInternalServerError)
+		return
+	}
+
+	// Find agent position
+	var agentPos Position
+	for _, agent := range wld.InitialAgents {
+		if agent.ID == agentID {
+			agentPos = Position{X: agent.Position.X, Y: agent.Position.Y, Z: agent.Position.Z}
+			break
+		}
+	}
+
+	radius := 10
+
+	// Get blocks
+	blocks := []BlockView{}
+	wldBlocks, err := wld.GetBlocksInRadius(agentPos.X, agentPos.Y, radius)
+	if err == nil {
+		for _, b := range wldBlocks {
+			blocks = append(blocks, convertBlock(b))
+		}
+	}
+
+	// Get agents in range
+	agents := []AgentView{}
+	for _, a := range wld.InitialAgents {
+		dx := a.Position.X - agentPos.X
+		dy := a.Position.Y - agentPos.Y
+		if dx*dx+dy*dy <= radius*radius {
+			agents = append(agents, convertAgent(a))
+		}
+	}
+
+	// Get buildings in range
+	buildings := []BuildingView{}
+	for _, b := range wld.InitialBuildings {
+		dx := b.Anchor.X - agentPos.X
+		dy := b.Anchor.Y - agentPos.Y
+		if dx*dx+dy*dy <= radius*radius {
+			buildings = append(buildings, convertBuilding(b))
+		}
+	}
+
+	area := VisibleArea{
+		AgentID:   agentID,
+		Center:    agentPos,
+		Radius:    radius,
+		Blocks:    blocks,
+		Agents:    agents,
+		Buildings: buildings,
+	}
+	json.NewEncoder(w).Encode(area)
+}
+
+// Mock todos and skills (to be implemented later)
 var mockTodos = []Todo{
 	{
 		ID:        "todo-001",
@@ -185,154 +401,6 @@ var mockSkills = []Skill{
 	{Type: "building", Level: 4, Exp: 300, ExpToNext: 400},
 }
 
-// CORS middleware
-func enableCORS(next http.HandlerFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, X-Todo-Token")
-		
-		if r.Method == "OPTIONS" {
-			w.WriteHeader(http.StatusOK)
-			return
-		}
-		
-		next(w, r)
-	}
-}
-
-// Handlers
-func getWorldInfo(w http.ResponseWriter, r *http.Request) {
-	info := WorldInfo{
-		ID:            "world-001",
-		Name:          "Agent Town",
-		Seed:          "123456789",
-		TimeSpeed:     5,
-		CurrentTime:   time.Now().Format(time.RFC3339),
-		AgentCount:    int64(len(mockAgents)),
-		BuildingCount: int64(len(mockBuildings)),
-	}
-	json.NewEncoder(w).Encode(info)
-}
-
-func getWorldTime(w http.ResponseWriter, r *http.Request) {
-	now := time.Now()
-	worldTime := WorldTime{
-		Timestamp: now.Format(time.RFC3339),
-		Year:      1,
-		Month:     3,
-		Day:       15,
-		Hour:      now.Hour(),
-		Minute:    now.Minute(),
-		Season:    "spring",
-		IsDaytime: now.Hour() >= 6 && now.Hour() < 18,
-	}
-	json.NewEncoder(w).Encode(worldTime)
-}
-
-func getWorldMap(w http.ResponseWriter, r *http.Request) {
-	centerX := 0
-	centerY := 0
-	radius := 10
-	
-	// Parse query params
-	if x := r.URL.Query().Get("x"); x != "" {
-		fmt.Sscanf(x, "%d", &centerX)
-	}
-	if y := r.URL.Query().Get("y"); y != "" {
-		fmt.Sscanf(y, "%d", &centerY)
-	}
-	if r := r.URL.Query().Get("radius"); r != "" {
-		fmt.Sscanf(r, "%d", &radius)
-	}
-	
-	// Generate flat square blocks - no random hills
-	blocks := []BlockView{}
-	for x := centerX - radius; x <= centerX+radius; x++ {
-		for y := centerY - radius; y <= centerY+radius; y++ {
-			blocks = append(blocks, BlockView{
-				Position:    Position{X: x, Y: y, Z: 0},
-				Height:      0,
-				TerrainType: "grass",
-			})
-		}
-	}
-	
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"center": Position{X: centerX, Y: centerY, Z: 0},
-		"radius": radius,
-		"blocks": blocks,
-		"agents": mockAgents,
-		"buildings": mockBuildings,
-	})
-}
-
-func getAgents(w http.ResponseWriter, r *http.Request) {
-	json.NewEncoder(w).Encode(mockAgents)
-}
-
-func getAgent(w http.ResponseWriter, r *http.Request) {
-	agentID := r.URL.Path[len("/api/v1/agents/"):]
-	for _, agent := range mockAgents {
-		if agent.ID == agentID {
-			json.NewEncoder(w).Encode(agent)
-			return
-		}
-	}
-	http.NotFound(w, r)
-}
-
-func getAgentStatus(w http.ResponseWriter, r *http.Request) {
-	agentID := r.URL.Path[len("/api/v1/agents/"):len(r.URL.Path)-len("/status")]
-	for _, agent := range mockAgents {
-		if agent.ID == agentID {
-			json.NewEncoder(w).Encode(map[string]interface{}{
-				"agentId":       agent.ID,
-				"worldTime":     time.Now().Format(time.RFC3339),
-				"stamina":       agent.Stamina,
-				"hunger":        agent.Hunger,
-				"inBattle":      agent.InBattle,
-				"pendingEvents": []Event{},
-			})
-			return
-		}
-	}
-	http.NotFound(w, r)
-}
-
-type Event struct {
-	ID        string `json:"id"`
-	Type      string `json:"type"`
-	Data      string `json:"data"`
-	CreatedAt string `json:"createdAt"`
-}
-
-func getVisibleArea(w http.ResponseWriter, r *http.Request) {
-	agentID := r.URL.Path[len("/api/v1/agents/"):len(r.URL.Path)-len("/visible-area")]
-	
-	// Generate flat square blocks
-	blocks := []BlockView{}
-	for x := -5; x <= 5; x++ {
-		for y := -5; y <= 5; y++ {
-			blocks = append(blocks, BlockView{
-				Position:    Position{X: x, Y: y, Z: 0},
-				Height:      0,
-				TerrainType: "grass",
-			})
-		}
-	}
-	
-	area := VisibleArea{
-		AgentID:   agentID,
-		Center:    Position{X: 0, Y: 0, Z: 0},
-		Radius:    10,
-		Blocks:    blocks,
-		Agents:    mockAgents,
-		Buildings: mockBuildings,
-	}
-	json.NewEncoder(w).Encode(area)
-}
-
 func getTodos(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"agentId": "agent-001",
@@ -348,6 +416,12 @@ func getSkills(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
+	// Initialize world
+	seed := int64(123456789)
+	if err := world.InitWorld(seed, nil); err != nil {
+		log.Fatalf("Failed to initialize world: %v", err)
+	}
+
 	// API routes
 	http.HandleFunc("/api/v1/world/info", enableCORS(getWorldInfo))
 	http.HandleFunc("/api/v1/world/time", enableCORS(getWorldTime))
@@ -368,11 +442,11 @@ func main() {
 			getAgent(w, r)
 		}
 	}))
-	
+
 	// Static files for web
 	fs := http.FileServer(http.Dir("./web/dist"))
 	http.Handle("/", fs)
-	
+
 	port := "8080"
 	fmt.Printf("Server starting on http://localhost:%s\n", port)
 	fmt.Println("API endpoints:")
