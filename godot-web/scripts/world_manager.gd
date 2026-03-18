@@ -26,7 +26,7 @@ func _ready():
 	# Road: asphalt-like, slightly rough, low specular
 	terrain_materials["road"] = _create_material(Color("#c8b08a"), 0.85, 0.1)
 	
-	# Water: semi-transparent, reflective, smooth
+	# Water: semi-transparent, reflective, smooth - render slightly below surface
 	terrain_materials["water"] = _create_water_material(Color("#4a92b8"))
 	
 	# Farmland: earthy soil texture, rough
@@ -95,7 +95,7 @@ func _create_water_material(color: Color) -> StandardMaterial3D:
 	# No refraction for better performance
 	mat.refraction_enabled = false
 	# Enable transparency sorting
-	mat.render_priority = -1  # Render water after opaque objects
+	mat.render_priority = 0
 	return mat
 
 func _create_glass_material(color: Color) -> StandardMaterial3D:
@@ -195,9 +195,6 @@ func _update_terrain(blocks: Array):
 		if block_top > current_top:
 			terrain_height_map[key] = block_top
 	
-	# Now we need to create columns of blocks from bottom up to surface
-	# For performance, we'll use MultiMesh for each type
-	
 	# Collect blocks by type for rendering
 	var blocks_by_type: Dictionary = {}
 	
@@ -208,33 +205,27 @@ func _update_terrain(blocks: Array):
 		var z = surface.z
 		var surface_type = surface.type
 		
-		# For water, render at level 0 as a surface
-		# For other types, render a column from y=0 up to surface_y
+		# Water is rendered at surface_y (which is -2 for water)
+		# Land is rendered as columns from bottom up
 		if surface_type == "water":
-			# Water is special: render at y=0 (surface level)
-			_add_block_to_batch(blocks_by_type, "water", x, 0, z)
+			# Water: render at its actual height (-2) extending up to 0
+			# Create a water column from surface_y to 0
+			for water_y in range(surface_y, 1):  # -2, -1, 0
+				_add_block_to_batch(blocks_by_type, "water", x, water_y, z)
 		else:
 			# For land, render surface block at surface_y
 			_add_block_to_batch(blocks_by_type, surface_type, x, surface_y, z)
 			
-			# Fill below with dirt/stone if above ground level
-			# This creates the "column" look
-			for fill_y in range(0, surface_y):
+			# Fill below with dirt/stone (from -2 up to surface_y)
+			for fill_y in range(-2, surface_y):
 				var fill_type = "stone" if fill_y < -1 else "dirt"
 				_add_block_to_batch(blocks_by_type, fill_type, x, fill_y, z)
-	
-	# Debug: print block counts by type
-	print("=== Terrain blocks by type ===")
-	for type in blocks_by_type.keys():
-		print("  ", type, ": ", blocks_by_type[type].size(), " blocks")
 	
 	# Create MultiMesh instances for each type
 	for type in blocks_by_type.keys():
 		var type_blocks = blocks_by_type[type]
 		if type_blocks.size() == 0:
 			continue
-		
-		print("Creating mesh for ", type, " with ", type_blocks.size(), " blocks")
 		
 		var mesh_instance = MultiMeshInstance3D.new()
 		
