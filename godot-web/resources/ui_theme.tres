@@ -93,6 +93,8 @@ content_margin_bottom = 3
 
 [resource]
 default_font_size = 14
+
+Label/font_sizes/font_size = 14
 Label/colors/font_color = Color(0.878, 0.878, 0.878, 1)
 Label/colors/font_outline_color = Color(0, 0, 0, 1)
 Label/colors/font_shadow_color = Color(0, 0, 0, 0.5)

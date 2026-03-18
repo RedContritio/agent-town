@@ -36,6 +36,10 @@ font_color = Color(0.31, 0.76, 0.97, 1)
 shadow_size = 1
 shadow_color = Color(0, 0, 0, 0.5)
 
+[sub_resource type="LabelSettings" id="StatsLabelSettings"]
+font_size = 15
+font_color = Color(0.878, 0.878, 0.878, 1)
+
 [node name="HUD" type="Control"]
 layout_mode = 3
 anchors_preset = 15
@@ -92,21 +96,25 @@ theme_override_styles/separator = SubResource("SeparatorStyle")
 
 [node name="AgentCountLabel" type="Label" parent="TopLeftPanel/VBoxContainer"]
 layout_mode = 2
+theme_override_font_sizes/font_size = 15
 text = "Agents: 0"
 
 [node name="BuildingCountLabel" type="Label" parent="TopLeftPanel/VBoxContainer"]
 layout_mode = 2
+theme_override_font_sizes/font_size = 15
 text = "Buildings: 0"
 
 [node name="BlockCountLabel" type="Label" parent="TopLeftPanel/VBoxContainer"]
 layout_mode = 2
+theme_override_font_sizes/font_size = 15
 text = "Blocks: 0"
 
 [node name="SeedLabel" type="Label" parent="TopLeftPanel/VBoxContainer"]
 layout_mode = 2
-theme_override_font_sizes/font_size = 11
+theme_override_font_sizes/font_size = 12
 theme_override_colors/font_color = Color(0.53, 0.53, 0.53, 1)
-text = "Seed: -"
+text = "Seed: -
+metadata/_edit_use_anchors_ = true
 
 [node name="TopRightPanel" type="Panel" parent="."]
 layout_mode = 1
@@ -169,6 +177,7 @@ offset_right = 150.0
 offset_bottom = -20.0
 grow_horizontal = 2
 grow_vertical = 0
+theme_override_font_sizes/font_size = 13
 text = "Connecting..."
 horizontal_alignment = 1
 vertical_alignment = 1

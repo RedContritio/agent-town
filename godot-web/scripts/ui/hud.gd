@@ -85,7 +85,7 @@ func _create_building_legend():
 		var label = Label.new()
 		label.text = type_name.capitalize()
 		label.add_theme_color_override("font_color", Color("#e0e0e0"))
-		label.add_theme_font_size_override("font_size", 13)
+		label.add_theme_font_size_override("font_size", 14)  # Unified with theme default
 		hbox.add_child(label)
 		
 		building_legend.add_child(hbox)

@@ -37,7 +37,7 @@ func add_label(node: Node3D, text: String, color: Color = ACCENT_CYAN):
 	var label = Label.new()
 	label.text = text
 	label.add_theme_color_override("font_color", color)
-	label.add_theme_font_size_override("font_size", 13)
+	label.add_theme_font_size_override("font_size", 14)
 	
 	# Add semi-transparent background for readability
 	var style = StyleBoxFlat.new()
