@@ -17,34 +17,89 @@ var terrain_height_map: Dictionary = {}  # "x,z" -> max_height (top of block)
 var pending_agents: Array = []  # Store agents until terrain is loaded
 
 func _ready():
-	# Create terrain materials with visual design colors
+	# Create terrain materials with visual design colors and unique characteristics
 	# Colors from docs/VISUAL_DESIGN.md - Appendix B: tileColorMap
-	terrain_materials["grass"] = _create_material(Color("#5a8f63"))
-	terrain_materials["road"] = _create_material(Color("#c8b08a"))
-	terrain_materials["water"] = _create_material(Color("#4a92b8"))
-	terrain_materials["farmland"] = _create_material(Color("#9a7820"))
-	terrain_materials["sand"] = _create_material(Color("#d4c088"))
-	terrain_materials["foundation"] = _create_material(Color("#6a6a6a"))
-	terrain_materials["hill"] = _create_material(Color("#4a6a4a"))
-	terrain_materials["door"] = _create_material(Color("#b89955"))
-	terrain_materials["fence"] = _create_material(Color("#8a7254"))
-	terrain_materials["bridge"] = _create_material(Color("#a08050"))
-	terrain_materials["indoor_floor"] = _create_material(Color("#c4a882"))
-	terrain_materials["indoor_wall"] = _create_material(Color("#e8e0d0"))
-	terrain_materials["indoor_window"] = _create_material(Color("#add8e6"))
+	
+	# Grass: natural rough surface, matte finish
+	terrain_materials["grass"] = _create_material(Color("#5a8f63"), 1.0, 0.0)
+	
+	# Road: asphalt-like, slightly rough, low specular
+	terrain_materials["road"] = _create_material(Color("#c8b08a"), 0.85, 0.1)
+	
+	# Water: semi-transparent, reflective, smooth
+	terrain_materials["water"] = _create_water_material(Color("#4a92b8"))
+	
+	# Farmland: earthy soil texture, rough
+	terrain_materials["farmland"] = _create_material(Color("#9a7820"), 0.95, 0.05)
+	
+	# Sand: granular, some specular highlights
+	terrain_materials["sand"] = _create_material(Color("#d4c088"), 0.7, 0.15)
+	
+	# Foundation: concrete-like, smooth
+	terrain_materials["foundation"] = _create_material(Color("#6a6a6a"), 0.6, 0.1)
+	
+	# Hill: darker grass, rough
+	terrain_materials["hill"] = _create_material(Color("#4a6a4a"), 1.0, 0.0)
+	
+	# Door: wooden, slight sheen
+	terrain_materials["door"] = _create_material(Color("#b89955"), 0.5, 0.2)
+	
+	# Fence: weathered wood, rough
+	terrain_materials["fence"] = _create_material(Color("#8a7254"), 0.9, 0.05)
+	
+	# Bridge: wood/stone, slightly polished
+	terrain_materials["bridge"] = _create_material(Color("#a08050"), 0.55, 0.15)
+	
+	# Indoor floor: polished wood
+	terrain_materials["indoor_floor"] = _create_material(Color("#c4a882"), 0.4, 0.25)
+	
+	# Indoor wall: plaster-like, smooth matte
+	terrain_materials["indoor_wall"] = _create_material(Color("#e8e0d0"), 0.75, 0.05)
+	
+	# Indoor window: glass-like, transparent and reflective
+	terrain_materials["indoor_window"] = _create_glass_material(Color("#add8e6"))
 	
 	# Connect API signals
 	api_client.world_info_received.connect(_on_world_info)
 	api_client.agents_received.connect(_on_agents_update)
 	api_client.map_received.connect(_on_map_received)
 
-func _create_material(color: Color) -> StandardMaterial3D:
+func _create_material(color: Color, roughness: float = 0.9, specular: float = 0.0) -> StandardMaterial3D:
 	var mat = StandardMaterial3D.new()
 	mat.albedo_color = color
-	mat.roughness = 0.9
+	mat.roughness = roughness
+	mat.metallic = 0.0
+	mat.metallic_specular = specular
 	mat.vertex_color_use_as_albedo = false
 	mat.shading_mode = BaseMaterial3D.SHADING_MODE_PER_PIXEL
-	mat.specular_mode = BaseMaterial3D.SPECULAR_DISABLED
+	mat.specular_mode = BaseMaterial3D.SPECULAR_SCHLICK_GGX if specular > 0 else BaseMaterial3D.SPECULAR_DISABLED
+	mat.disable_receive_shadows = false
+	return mat
+
+func _create_water_material(color: Color) -> StandardMaterial3D:
+	var mat = StandardMaterial3D.new()
+	mat.albedo_color = Color(color.r, color.g, color.b, 0.65)  # 65% opacity
+	mat.roughness = 0.05  # Very smooth for reflections
+	mat.metallic = 0.1
+	mat.metallic_specular = 0.8  # High specular for water shine
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_PER_PIXEL
+	mat.specular_mode = BaseMaterial3D.SPECULAR_SCHLICK_GGX
+	mat.disable_receive_shadows = true  # Water receives shadows differently
+	# Add some refraction-like effect
+	mat.refraction_enabled = true
+	mat.refraction_scale = 0.02
+	return mat
+
+func _create_glass_material(color: Color) -> StandardMaterial3D:
+	var mat = StandardMaterial3D.new()
+	mat.albedo_color = Color(color.r, color.g, color.b, 0.4)  # 40% opacity for glass
+	mat.roughness = 0.1  # Smooth glass
+	mat.metallic = 0.0
+	mat.metallic_specular = 0.9  # High specular
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_PER_PIXEL
+	mat.specular_mode = BaseMaterial3D.SPECULAR_SCHLICK_GGX
 	mat.disable_receive_shadows = false
 	return mat
 
