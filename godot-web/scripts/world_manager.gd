@@ -184,17 +184,17 @@ func _update_terrain_from_chunks(chunks: Array):
 		var chunk_y = chunk.get("y", 0)  # This is chunk's Y (which is Z in Godot)
 		var blocks = chunk.get("blocks", [])
 		
-		# Create water floor for this chunk (32x32 thin slab at y=0)
+		# Create water floor for this chunk (32x32 thin slab at y=-1)
 		var water_instance = MeshInstance3D.new()
 		var box_mesh = BoxMesh.new()
 		box_mesh.size = Vector3(CHUNK_SIZE, 0.1, CHUNK_SIZE)
 		water_instance.mesh = box_mesh
 		water_instance.material_override = terrain_materials["water"]
 		
-		# Position at chunk center, y=0
+		# Position at chunk center, y=-1 (below ground level)
 		var center_x = chunk_x * CHUNK_SIZE + CHUNK_SIZE / 2.0 - 0.5
 		var center_z = chunk_y * CHUNK_SIZE + CHUNK_SIZE / 2.0 - 0.5
-		water_instance.position = Vector3(center_x, 0, center_z)
+		water_instance.position = Vector3(center_x, -1, center_z)
 		terrain_root.add_child(water_instance)
 		
 		# Collect all blocks for land rendering
@@ -224,11 +224,11 @@ func _render_land_blocks(blocks: Array):
 			if y > existing.y:
 				surface_blocks[key] = {"x": x, "y": y, "z": z, "type": type}
 		
-		# Store surface height for agent spawning
-		var block_top = float(y) + 1.0
+		# Store surface height for agent spawning (ground level is y+0.5 for surface block)
+		var ground_level = float(y) + 0.5
 		var current_top = terrain_height_map.get(key, -9999.0)
-		if block_top > current_top:
-			terrain_height_map[key] = block_top
+		if ground_level > current_top:
+			terrain_height_map[key] = ground_level
 	
 	# Collect blocks by type for rendering
 	var blocks_by_type: Dictionary = {}
@@ -244,12 +244,12 @@ func _render_land_blocks(blocks: Array):
 		if surface_type == "water":
 			continue
 		
-		# For land, render surface block at surface_y + 1 (above water)
-		_add_block_to_batch(blocks_by_type, surface_type, x, surface_y + 1, z)
+		# For land, render surface block at natural height
+		_add_block_to_batch(blocks_by_type, surface_type, x, surface_y, z)
 		
-		# Fill below with dirt/stone (from y=1 up to surface_y+1)
-		for fill_y in range(1, surface_y + 1):
-			var fill_type = "stone" if fill_y < 2 else "dirt"
+		# Fill below with dirt/stone (from y=-1 up to surface_y)
+		for fill_y in range(-1, surface_y):
+			var fill_type = "stone" if fill_y < 0 else "dirt"
 			_add_block_to_batch(blocks_by_type, fill_type, x, fill_y, z)
 	
 	# Create MultiMesh instances for each type

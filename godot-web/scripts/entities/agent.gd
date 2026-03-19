@@ -27,13 +27,12 @@ func setup_with_height(data: Dictionary, ground_height: float):
 	
 	var pos = data.get("position", {})
 	var x = pos.get("x", 0)
-	var y = pos.get("z", 0)  # API z is height
-	var z = pos.get("y", 0)  # API y is z in Godot
+	var z = pos.get("y", 0)  # API y is horizontal z in Godot
 	
-	# Place agent on top of ground
-	# ground_height is the top of the block (block_y + 0.5 * block_height)
-	# Agent should stand on top, so y = ground_height + 0.5 (half of agent height)
-	var final_y = max(y, ground_height + 0.5)
+	# Agent only has 2D position (x, y), height is determined by terrain
+	# ground_height is the surface height (block top at y=0.5 for surface block)
+	# Agent center should be at ground_height + 0.5 (half agent height)
+	var final_y = ground_height + 0.5
 	
 	target_position = Vector3(x, final_y, z)
 	position = target_position
@@ -47,9 +46,24 @@ func setup_with_height(data: Dictionary, ground_height: float):
 		var material = StandardMaterial3D.new()
 		material.albedo_color = agent_color
 		mesh.material_override = material
+	else:
+		# Mesh not ready yet, defer material setup
+		call_deferred("_apply_material")
+
+func _apply_material():
+	if mesh:
+		var material = StandardMaterial3D.new()
+		material.albedo_color = agent_color
+		mesh.material_override = material
 	
 
 func _ready():
+	# Apply material if not already set
+	if mesh and mesh.material_override == null:
+		var material = StandardMaterial3D.new()
+		material.albedo_color = agent_color
+		mesh.material_override = material
+	
 	# Bobbing animation - apply to mesh only, not the entire node
 	# This ensures name labels (in screen space UI) don't bounce with the model
 	_start_bobbing_animation()
