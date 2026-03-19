@@ -21,6 +21,7 @@ func _ready():
 	if api_client:
 		api_client.world_info_received.connect(_on_world_info)
 		api_client.agents_received.connect(_on_agents_received)
+		api_client.map_received.connect(_on_map_received)
 		api_client.error_occurred.connect(_on_error)
 		api_client.fetch_world_info()
 	
@@ -43,6 +44,17 @@ func _on_world_info(info: Dictionary):
 
 func _on_agents_received(agents: Array):
 	agent_count = agents.size()
+	_update_counts()
+
+func _on_map_received(map_data: Dictionary):
+	# Calculate total blocks from chunks
+	if map_data.has("chunks"):
+		var total = 0
+		for chunk in map_data["chunks"]:
+			total += chunk.get("blocks", []).size()
+		block_count = total
+	elif map_data.has("blocks"):
+		block_count = map_data["blocks"].size()
 	_update_counts()
 
 func _on_error(error: String):
