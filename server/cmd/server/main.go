@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -40,6 +42,12 @@ type BlockView struct {
 	TerrainType    string   `json:"terrainType"`
 	ResourceType   string   `json:"resourceType,omitempty"`
 	ResourceAmount int      `json:"resourceAmount,omitempty"`
+}
+
+type ChunkView struct {
+	X      int         `json:"x"`
+	Y      int         `json:"y"`
+	Blocks []BlockView `json:"blocks"`
 }
 
 type BuildingView struct {
@@ -222,12 +230,30 @@ func getWorldMap(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get blocks from chunk manager
-	blocks := []BlockView{}
-	wldBlocks, err := wld.GetBlocksInRadius(centerX, centerY, radius)
-	if err == nil {
-		for _, b := range wldBlocks {
-			blocks = append(blocks, convertBlock(b))
+	// Get chunks in radius
+	chunks := []ChunkView{}
+	chunkSet := make(map[string]bool)
+	
+	// Calculate which chunks are within radius
+	for dx := -radius; dx <= radius; dx++ {
+		for dy := -radius; dy <= radius; dy++ {
+			x, y := centerX+dx, centerY+dy
+			cx, cy, _, _ := wld.ChunkManager.WorldToChunk(x, y)
+			key := fmt.Sprintf("%d,%d", cx, cy)
+			if !chunkSet[key] {
+				chunkSet[key] = true
+				chunk, err := wld.ChunkManager.GetChunk(cx, cy)
+				if err == nil {
+					chunkView := ChunkView{
+						X: cx,
+						Y: cy,
+					}
+					for _, b := range chunk.Blocks {
+						chunkView.Blocks = append(chunkView.Blocks, convertBlock(b))
+					}
+					chunks = append(chunks, chunkView)
+				}
+			}
 		}
 	}
 
@@ -256,7 +282,7 @@ func getWorldMap(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"center":    Position{X: centerX, Y: centerY, Z: 0},
 		"radius":    radius,
-		"blocks":    blocks,
+		"chunks":    chunks,
 		"agents":    agents,
 		"buildings": buildings,
 	})
@@ -444,8 +470,22 @@ func main() {
 		}
 	}))
 
+	// Determine web directory: if ./web exists use it, else use executable's directory
+	webDir := "./web"
+	if _, err := os.Stat(webDir); os.IsNotExist(err) {
+		// ./web not found, try relative to executable
+		ex, err := os.Executable()
+		if err != nil {
+			log.Fatalf("Failed to get executable path: %v", err)
+		}
+		exPath := filepath.Dir(ex)
+		webDir = filepath.Join(exPath, "web")
+	}
+	
+	log.Printf("Serving static files from: %s", webDir)
+	
 	// Static files for web with proper MIME types and COOP/COEP headers for Godot
-	fs := http.FileServer(http.Dir("server/cmd/server/web"))
+	fs := http.FileServer(http.Dir(webDir))
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		// Set correct MIME types for Godot web export files
 		if strings.HasSuffix(r.URL.Path, ".js") {

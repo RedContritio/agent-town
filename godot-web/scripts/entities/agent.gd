@@ -8,7 +8,6 @@ var agent_color: Color
 var target_position: Vector3
 
 @onready var mesh: MeshInstance3D = $Mesh
-@onready var label: Label3D = $Label3D
 
 const COLORS = [
 	Color(0.31, 0.76, 0.97),  # Cyan
@@ -49,16 +48,20 @@ func setup_with_height(data: Dictionary, ground_height: float):
 		material.albedo_color = agent_color
 		mesh.material_override = material
 	
-	# Update label
-	if label:
-		label.text = agent_name
 
 func _ready():
-	# Bobbing animation
+	# Bobbing animation - apply to mesh only, not the entire node
+	# This ensures name labels (in screen space UI) don't bounce with the model
+	_start_bobbing_animation()
+
+func _start_bobbing_animation():
+	if mesh == null:
+		return
 	var tween = create_tween()
 	tween.set_loops()
-	tween.tween_property(self, "position:y", position.y + 0.1, 0.5)
-	tween.tween_property(self, "position:y", position.y, 0.5)
+	# Animate mesh local position instead of node global position
+	tween.tween_property(mesh, "position:y", 0.1, 0.5)
+	tween.tween_property(mesh, "position:y", 0.0, 0.5)
 
 func update_data(data: Dictionary):
 	var pos = data.get("position", {})

@@ -59,7 +59,7 @@ godot-web/
 1. **确保后端服务已启动**
    ```bash
    cd ..
-   make dev-server  # 启动 Go 后端
+   make run  # 启动 Go 后端
    ```
 
 2. **在 Godot 编辑器中运行**

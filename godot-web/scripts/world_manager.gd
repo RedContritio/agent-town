@@ -147,9 +147,15 @@ func _spawn_agents(agents: Array):
 		name_labels.add_label(agent, agent_data.get("name", "Agent"), Color("#4fc3f7"))
 
 func _on_map_received(map_data: Dictionary):
-	if map_data.has("blocks"):
-		_update_terrain(map_data["blocks"])
+	if map_data.has("chunks"):
+		_update_terrain_from_chunks(map_data["chunks"])
 		# Now spawn pending agents if any
+		if not pending_agents.is_empty():
+			_spawn_agents(pending_agents)
+			pending_agents.clear()
+	elif map_data.has("blocks"):
+		# Fallback for old API format
+		_update_terrain(map_data["blocks"])
 		if not pending_agents.is_empty():
 			_spawn_agents(pending_agents)
 			pending_agents.clear()
@@ -161,6 +167,117 @@ func _get_ground_height(x: int, z: int) -> float:
 	var key = "%d,%d" % [x, z]
 	# Default to 1.0 (single grass block height) if no terrain data
 	return terrain_height_map.get(key, 1.0)
+
+const CHUNK_SIZE = 32
+
+func _update_terrain_from_chunks(chunks: Array):
+	# Clear existing terrain and height map
+	terrain_height_map.clear()
+	for child in terrain_root.get_children():
+		child.queue_free()
+	
+	# First pass: collect all blocks and create water floors for each chunk
+	var all_blocks: Array = []
+	
+	for chunk in chunks:
+		var chunk_x = chunk.get("x", 0)
+		var chunk_y = chunk.get("y", 0)  # This is chunk's Y (which is Z in Godot)
+		var blocks = chunk.get("blocks", [])
+		
+		# Create water floor for this chunk (32x32 thin slab at y=0)
+		var water_instance = MeshInstance3D.new()
+		var box_mesh = BoxMesh.new()
+		box_mesh.size = Vector3(CHUNK_SIZE, 0.1, CHUNK_SIZE)
+		water_instance.mesh = box_mesh
+		water_instance.material_override = terrain_materials["water"]
+		
+		# Position at chunk center, y=0
+		var center_x = chunk_x * CHUNK_SIZE + CHUNK_SIZE / 2.0 - 0.5
+		var center_z = chunk_y * CHUNK_SIZE + CHUNK_SIZE / 2.0 - 0.5
+		water_instance.position = Vector3(center_x, 0, center_z)
+		terrain_root.add_child(water_instance)
+		
+		# Collect all blocks for land rendering
+		all_blocks.append_array(blocks)
+	
+	# Second pass: render land blocks (from y=1, above water)
+	_render_land_blocks(all_blocks)
+
+func _render_land_blocks(blocks: Array):
+	# Build a height map from surface blocks
+	var surface_blocks: Dictionary = {}
+	
+	for block in blocks:
+		var pos = block.get("position", {})
+		var x = pos.get("x", 0)
+		var y = pos.get("z", 0)  # height (API z is height)
+		var z = pos.get("y", 0)  # API y is z in Godot
+		var type = block.get("terrainType", "grass")
+		
+		var key = "%d,%d" % [int(x), int(z)]
+		
+		# Track the highest block at this x,z position
+		if not surface_blocks.has(key):
+			surface_blocks[key] = {"x": x, "y": y, "z": z, "type": type}
+		else:
+			var existing = surface_blocks[key]
+			if y > existing.y:
+				surface_blocks[key] = {"x": x, "y": y, "z": z, "type": type}
+		
+		# Store surface height for agent spawning
+		var block_top = float(y) + 1.0
+		var current_top = terrain_height_map.get(key, -9999.0)
+		if block_top > current_top:
+			terrain_height_map[key] = block_top
+	
+	# Collect blocks by type for rendering
+	var blocks_by_type: Dictionary = {}
+	
+	for key in surface_blocks.keys():
+		var surface = surface_blocks[key]
+		var x = surface.x
+		var surface_y = surface.y
+		var z = surface.z
+		var surface_type = surface.type
+		
+		# Skip water blocks - they're handled by chunk water floors
+		if surface_type == "water":
+			continue
+		
+		# For land, render surface block at surface_y + 1 (above water)
+		_add_block_to_batch(blocks_by_type, surface_type, x, surface_y + 1, z)
+		
+		# Fill below with dirt/stone (from y=1 up to surface_y+1)
+		for fill_y in range(1, surface_y + 1):
+			var fill_type = "stone" if fill_y < 2 else "dirt"
+			_add_block_to_batch(blocks_by_type, fill_type, x, fill_y, z)
+	
+	# Create MultiMesh instances for each type
+	for type in blocks_by_type.keys():
+		var type_blocks = blocks_by_type[type]
+		if type_blocks.size() == 0:
+			continue
+		
+		var mesh_instance = MultiMeshInstance3D.new()
+		
+		var multimesh = MultiMesh.new()
+		multimesh.transform_format = MultiMesh.TRANSFORM_3D
+		
+		# Create mesh
+		var box_mesh = BoxMesh.new()
+		box_mesh.size = Vector3(1, 1, 1)
+		multimesh.mesh = box_mesh
+		multimesh.instance_count = type_blocks.size()
+		
+		for i in range(type_blocks.size()):
+			var block = type_blocks[i]
+			var transform = Transform3D()
+			transform.origin = Vector3(block.x, block.y + 0.5, block.z)
+			multimesh.set_instance_transform(i, transform)
+		
+		mesh_instance.multimesh = multimesh
+		mesh_instance.material_override = terrain_materials.get(type, terrain_materials["grass"])
+		terrain_root.add_child(mesh_instance)
 
 func _update_terrain(blocks: Array):
 	# Clear existing terrain and height map
@@ -208,10 +325,8 @@ func _update_terrain(blocks: Array):
 		# Water is rendered at surface_y (which is -2 for water)
 		# Land is rendered as columns from bottom up
 		if surface_type == "water":
-			# Water: render at its actual height (-2) extending up to 0
-			# Create a water column from surface_y to 0
-			for water_y in range(surface_y, 1):  # -2, -1, 0
-				_add_block_to_batch(blocks_by_type, "water", x, water_y, z)
+			# Collect water blocks for chunk-based merging
+			_add_block_to_batch(blocks_by_type, "water", x, 0, z)
 		else:
 			# For land, render surface block at surface_y
 			_add_block_to_batch(blocks_by_type, surface_type, x, surface_y, z)
@@ -234,14 +349,22 @@ func _update_terrain(blocks: Array):
 		
 		# Create mesh with proper size
 		var box_mesh = BoxMesh.new()
-		box_mesh.size = Vector3(1, 1, 1)
+		if type == "water":
+			# Water: thin slab with slight overlap to eliminate gaps between blocks
+			box_mesh.size = Vector3(1.02, 0.1, 1.02)
+		else:
+			box_mesh.size = Vector3(1, 1, 1)
 		multimesh.mesh = box_mesh
 		multimesh.instance_count = type_blocks.size()
 		
 		for i in range(type_blocks.size()):
 			var block = type_blocks[i]
 			var transform = Transform3D()
-			transform.origin = Vector3(block.x, block.y + 0.5, block.z)
+			if type == "water":
+				# Water: center at y=0 (slab extends from -0.05 to 0.05)
+				transform.origin = Vector3(block.x, block.y, block.z)
+			else:
+				transform.origin = Vector3(block.x, block.y + 0.5, block.z)
 			multimesh.set_instance_transform(i, transform)
 		
 		mesh_instance.multimesh = multimesh
