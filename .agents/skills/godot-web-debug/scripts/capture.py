@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/home/redcontritio/.kimi/tools/venv/bin/python3
 """捕获 Godot Web 截图
 
 用法：
