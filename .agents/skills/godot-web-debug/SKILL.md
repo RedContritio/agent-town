@@ -18,16 +18,14 @@ description: 使用截图验证调试 Godot Web UI 问题。当用户报告 Godo
 ## 快速开始
 
 ```bash
-# 1. 安装 Playwright（首次使用）
-python3 -m venv /tmp/playwright-venv
-/tmp/playwright-venv/bin/pip install playwright
-/tmp/playwright-venv/bin/python -m playwright install chromium
-
-# 2. 重启服务器并截图
+# 1. 重启服务器并截图（脚本会自动准备 Playwright 环境）
 ./.agents/skills/godot-web-debug/scripts/restart-and-capture.sh
 
-# 3. 查看截图确认问题
-# → 使用 ReadMediaFile 查看输出路径
+# 2. 查看截图确认问题
+# → 使用 Read 工具读取 /tmp/godot_screenshot.png
+
+# 3. 或者单独截图（服务器已运行的情况下）
+./.agents/skills/godot-web-debug/scripts/screenshot.sh /tmp/my_screenshot.png
 
 # 4. 修复代码...
 
@@ -40,18 +38,15 @@ python3 -m venv /tmp/playwright-venv
 
 ### 1. 复现问题
 
-
 ```bash
 # 重启服务器（确保使用最新代码）
 ./.agents/skills/godot-web-debug/scripts/restart-server.sh
 
 # 捕获当前状态
-/tmp/playwright-venv/bin/python \
-  .agents/skills/godot-web-debug/scripts/capture.py \
-  /tmp/godot_before.png
+./.agents/skills/godot-web-debug/scripts/screenshot.sh /tmp/godot_before.png
 
-# 查看截图
-ReadMediaFile("/tmp/godot_before.png")
+# 查看截图（使用 Read 工具读取图片路径）
+# 路径: /tmp/godot_before.png
 ```
 
 ### 2. 分析问题
@@ -79,12 +74,10 @@ label.position = screen_pos - (label.size * label.scale) / 2
 ```bash
 # 重新构建并截图
 make web && ./.agents/skills/godot-web-debug/scripts/restart-server.sh
-/tmp/playwright-venv/bin/python \
-  .agents/skills/godot-web-debug/scripts/capture.py \
-  /tmp/godot_after.png
+./.agents/skills/godot-web-debug/scripts/screenshot.sh /tmp/godot_after.png
 
-# 对比
-ReadMediaFile("/tmp/godot_after.png")
+# 对比（使用 Read 工具读取图片路径）
+# 路径: /tmp/godot_after.png
 ```
 
 ## 常见问题
@@ -99,9 +92,16 @@ ReadMediaFile("/tmp/godot_after.png")
 
 ## 脚本
 
-- `scripts/restart-server.sh` - 重启 Godot Web 服务器
-- `scripts/capture.py` - 通过 Playwright 截图
-- `scripts/restart-and-capture.sh` - 重启+截图组合命令
+所有 AI 调试脚本位于 `.agents/skills/godot-web-debug/scripts/`：
+
+- `restart-server.sh` - 重启 Godot Web 服务器
+- `restart-and-capture.sh` - 重启+截图组合命令
+- `screenshot.sh` - 截图工具（调用 capture.py）
+- `capture.py` - Playwright 截图实现
+
+## 共享库
+
+- `lib.sh` - 技能内部共享的工具函数（路径查找、虚拟环境管理等）
 
 ## 参考文档
 

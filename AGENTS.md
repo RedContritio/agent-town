@@ -16,7 +16,7 @@
 | 组件 | 技术 | 版本 |
 |------|------|------|
 | 后端 | Go | 1.22+ |
-| Web 前端 | Godot | 4.3+ |
+| Web 前端 | Godot | 4.5 |
 | 3D 渲染 | Godot Engine | 内置 |
 | Web 导出 | WebAssembly | WASM |
 | API 协议 | HTTP REST | JSON |
@@ -25,7 +25,7 @@
 
 ## 环境安装
 
-首次使用需要安装依赖（Go 1.22+、Godot 4.3+、导出模板）：
+首次使用需要安装依赖（Go 1.22+、Godot 4.5、导出模板）：
 
 ```bash
 ./scripts/setup.sh
@@ -43,10 +43,16 @@
 项目使用 Make 进行构建自动化：
 
 ```bash
-# 构建所有组件（服务端 + CLI）
+# 构建所有组件（server + cli + web）
 make build
 
-# 导出 Web 前端（需要 godot4）
+# 单独构建服务端
+make server
+
+# 单独构建 CLI
+make cli
+
+# 单独导出 Web 前端（需要 godot4）
 make web
 
 # 构建并启动服务器
@@ -68,8 +74,8 @@ make help
 ### 快速开始
 
 ```bash
-# 构建、导出 Web 前端并运行服务器
-make build && make web && make run
+# 构建所有组件并运行服务器
+make build && make run
 
 # 打开浏览器访问 http://localhost:8080
 ```
@@ -143,7 +149,7 @@ Godot 项目结构：
 
 **Godot Web** (`godot-web/`)：
 - 功能完整的 3D 世界查看器
-- 使用 Godot Engine 4.3+ WebAssembly 导出
+- 使用 Godot Engine 4.5 WebAssembly 导出
 - 使用 MultiMesh 渲染地形以获得性能
 - 每 5 秒自动刷新世界数据
 - HUD 作为独立 CanvasLayer
@@ -217,8 +223,8 @@ GET  /api/v1/agents/{id}/skills
 
 **原则**：
 - 重复使用两次以上的命令应做成脚本
-- 放在 `.kimi/tools/` 便于管理
-- 虚拟环境也放在此处
+- 放在 `scripts/` 目录便于管理
+- 虚拟环境放在 `~/.config/agent-town/venv` 或临时目录
 
 ## 代码风格指南
 

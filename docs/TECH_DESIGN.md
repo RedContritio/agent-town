@@ -1235,79 +1235,88 @@ agent-town/
 ├── go.sum
 ├── Makefile
 ├── README.md
-├── docker-compose.yml
+├── LICENSE
 │
 ├── docs/
+│   ├── ARCHITECTURE.md
 │   ├── GAME_DESIGN.md
-│   └── TECH_DESIGN.md
+│   ├── TECH_DESIGN.md
+│   ├── VISUAL_DESIGN.md
+│   └── WEB_DESIGN.md
 │
 ├── proto/
-│   └── agenttown.proto
+│   └── agenttown/
+│       └── v1/
+│           ├── agent.proto
+│           └── common.proto
 │
 ├── server/
 │   ├── cmd/
 │   │   └── server/
-│   │       └── main.go
-│   ├── internal/
-│   │   ├── config/
-│   │   ├── api/
-│   │   │   ├── grpc/
-│   │   │   └── http/
-│   │   ├── service/
-│   │   │   ├── agent.go
-│   │   │   ├── world.go
-│   │   │   ├── economy.go
-│   │   │   ├── battle.go
-│   │   │   ├── build.go
-│   │   │   └── task.go
-│   │   ├── repository/
-│   │   │   ├── agent.go
-│   │   │   ├── world.go
-│   │   │   └── economy.go
-│   │   ├── model/
-│   │   │   └── entity.go
-│   │   ├── worldgen/
-│   │   │   └── generator.go
-│   │   └── auth/
-│   │       └── jwt.go
-│   ├── migrations/
-│   └── tests/
-│       └── integration/
+│   │       ├── main.go
+│   │       └── web/               # Godot Web 导出目录 (gitignored)
+│   └── internal/
+│       └── world/
+│           ├── agents.go
+│           ├── buildings.go
+│           ├── chunk.go
+│           ├── generator.go
+│           ├── noise.go
+│           ├── resources.go
+│           ├── roads.go
+│           ├── state.go
+│           └── terrain.go
 │
 ├── cli/
-│   ├── cmd/
-│   │   └── cli/
-│   │       └── main.go
-│   ├── internal/
-│   │   ├── client/
-│   │   │   └── grpc.go
-│   │   ├── commands/
-│   │   │   ├── register.go
-│   │   │   ├── login.go
-│   │   │   ├── status.go
-│   │   │   ├── move.go
-│   │   │   ├── gather.go
-│   │   │   ├── build.go
-│   │   │   ├── inventory.go
-│   │   │   ├── todo.go
-│   │   │   └── token.go
-│   │   └── config/
-│   └── tests/
+│   └── cmd/
+│       └── cli/
+│           └── main.go
 │
-└── web/
-    ├── cmd/
-    │   └── web/
-    │       └── main.go
-    ├── internal/
-    │   ├── server/
-    │   ├── handler/
-    │   ├── static/
-    │   └── template/
-    ├── static/
-    │   ├── js/
-    │   ├── css/
-    │   └── assets/
-    └── templates/
+├── godot-web/                     # Godot Web 前端项目
+│   ├── project.godot
+│   ├── export_presets.cfg
+│   ├── icon.svg
+│   ├── scenes/
+│   │   ├── main.tscn
+│   │   ├── entities/
+│   │   │   ├── agent.tscn
+│   │   │   └── building.tscn
+│   │   └── ui/
+│   │       └── hud.tscn
+│   ├── scripts/
+│   │   ├── api_client.gd          # HTTP API 客户端
+│   │   ├── camera_controller.gd
+│   │   ├── name_label_manager.gd
+│   │   ├── world_manager.gd
+│   │   ├── debug/
+│   │   ├── entities/
+│   │   │   ├── agent.gd
+│   │   │   └── building.gd
+│   │   └── ui/
+│   │       └── hud.gd
+│   └── resources/
+│       └── ui_theme.tres
+│
+├── scripts/                         # 项目脚本
+│   ├── lib.sh                       # 共享工具库
+│   ├── setup.sh
+│   ├── install-go.sh
+│   ├── install-godot.sh
+│   ├── install-godot-templates.sh
+│   ├── export-web.sh
+│   └── dev.sh
+│
+└── .agents/
+    └── skills/
+        └── godot-web-debug/         # AI 调试技能
+            ├── lib.sh
+            ├── SKILL.md
+            ├── scripts/
+            │   ├── capture.py
+            │   ├── screenshot.sh
+            │   ├── restart-server.sh
+            │   └── restart-and-capture.sh
+            └── references/
 ```
 
 ---

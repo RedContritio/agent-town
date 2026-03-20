@@ -1,4 +1,4 @@
-#!/home/redcontritio/.kimi/tools/venv/bin/python3
+#!/usr/bin/env python3
 """捕获 Godot Web 截图
 
 用法：
@@ -8,6 +8,10 @@
     capture.py                           # 默认：/tmp/godot_screenshot.png
     capture.py /tmp/before.png
     capture.py /tmp/test.png http://localhost:8080
+
+环境要求：
+    - 需要 Playwright 已安装（chromium）
+    - 建议使用虚拟环境运行
 """
 
 from playwright.sync_api import sync_playwright

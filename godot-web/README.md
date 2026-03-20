@@ -40,12 +40,15 @@ godot-web/
 
 ## 开发环境配置
 
-1. **安装 Godot 4.3+**
+1. **安装 Godot 4.5**
    ```bash
-   # 下载 Godot 4.3
-   wget https://downloads.tuxfamily.org/godotengine/4.3/Godot_v4.3-stable_linux.x86_64.tar.xz
-   tar -xf Godot_v4.3-stable_linux.x86_64.tar.xz
-   sudo mv Godot_v4.3-stable_linux.x86_64 /usr/local/bin/godot
+   # 使用项目脚本自动安装
+   ../scripts/install-godot.sh
+   
+   # 或者手动下载
+   wget https://downloads.tuxfamily.org/godotengine/4.5/Godot_v4.5-stable_linux.x86_64.tar.xz
+   tar -xf Godot_v4.5-stable_linux.x86_64.tar.xz
+   sudo mv Godot_v4.5-stable_linux.x86_64 /usr/local/bin/godot4
    ```
 
 2. **打开项目**

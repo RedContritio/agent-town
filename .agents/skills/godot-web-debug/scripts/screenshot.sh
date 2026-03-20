@@ -1,6 +1,6 @@
 #!/bin/bash
 # =============================================================================
-# 重启服务器并捕获截图（AI 调试工具）
+# 捕获 Godot Web 截图（AI 调试工具）
 # =============================================================================
 
 # 加载技能库
@@ -8,18 +8,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/../lib.sh"
 
 OUTPUT="${1:-/tmp/godot_screenshot.png}"
-
-echo "=== Godot Web 调试：重启并截图 ==="
-echo ""
-
-# 重启服务器
-"$SCRIPT_DIR/restart-server.sh"
-if [ $? -ne 0 ]; then
-    error "服务器重启失败"
-    exit 1
-fi
-
-echo ""
+URL="${2:-http://localhost:8080}"
 
 # 确保 Playwright 虚拟环境已准备
 VENV_PATH=$(ensure_playwright)
@@ -28,12 +17,13 @@ if [ -z "$VENV_PATH" ]; then
     exit 1
 fi
 
+# 查找 capture.py
+CAPTURE_SCRIPT="$SCRIPT_DIR/capture.py"
+
+if [ ! -f "$CAPTURE_SCRIPT" ]; then
+    error "Capture script not found at $CAPTURE_SCRIPT"
+    exit 1
+fi
+
 info "使用虚拟环境: $VENV_PATH"
-
-# 捕获截图
-"$VENV_PATH/bin/python" "$SCRIPT_DIR/capture.py" "$OUTPUT"
-
-echo ""
-echo "=== 完成 ==="
-echo "截图：$OUTPUT"
-echo "查看方式：使用 Read 工具读取该图片路径"
+"$VENV_PATH/bin/python" "$CAPTURE_SCRIPT" "$OUTPUT" "$URL"

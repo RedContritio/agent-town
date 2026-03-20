@@ -1,5 +1,5 @@
 #!/bin/bash
-# Install Godot 4.5+ via snap
+# Install Godot 4.5 via snap
 
 set -e
 

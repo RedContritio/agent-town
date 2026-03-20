@@ -2,8 +2,9 @@ extends Node
 
 class_name ApiClient
 
-const API_BASE_URL := "http://localhost:8080/api/v1"
-const REFRESH_INTERVAL := 5.0  # seconds
+# API 配置从项目设置读取，可通过导出预设或命令行覆盖
+var API_BASE_URL: String
+var REFRESH_INTERVAL: float
 
 signal world_info_received(info: Dictionary)
 signal world_time_received(time_info: Dictionary)
@@ -17,6 +18,12 @@ var refresh_timer: Timer
 var is_requesting := false
 
 func _ready():
+	# 从项目设置读取配置，使用默认值
+	API_BASE_URL = ProjectSettings.get_setting("custom/api/base_url", "http://localhost:8080/api/v1")
+	REFRESH_INTERVAL = ProjectSettings.get_setting("custom/api/refresh_interval", 5.0)
+	
+	print("API Client initialized with base URL: ", API_BASE_URL)
+	
 	http_client = HTTPClient.new()
 	
 	# Create refresh timer
