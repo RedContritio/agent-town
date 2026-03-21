@@ -11,7 +11,7 @@
 
 环境要求：
     - 需要 Playwright 已安装（chromium）
-    - 建议使用虚拟环境运行
+    - 必须使用 headed 模式（headless=False）才能渲染 Godot WebAssembly
 """
 
 from playwright.sync_api import sync_playwright
@@ -19,14 +19,15 @@ import sys
 
 def capture(output="/tmp/godot_screenshot.png", url="http://localhost:8080"):
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
+        # 必须使用 headed 模式！headless 模式无法渲染 Godot WebAssembly
+        browser = p.chromium.launch(headless=False)
         page = browser.new_page(viewport={"width": 1280, "height": 720})
         
         print(f"→ 正在访问 {url}...")
-        page.goto(url, wait_until="networkidle", timeout=30000)
+        page.goto(url, wait_until="networkidle", timeout=60000)
         
-        print("→ 等待 Godot WebAssembly 加载...")
-        page.wait_for_timeout(5000)
+        print("→ 等待 Godot WebAssembly 加载（15秒）...")
+        page.wait_for_timeout(15000)
         
         print(f"→ 保存截图到 {output}...")
         page.screenshot(path=output, full_page=False)

@@ -1,5 +1,25 @@
 # Godot Web 常见陷阱
 
+## ⚠️ 陷阱 0：使用 headless 模式（最重要！）
+
+**Godot WebAssembly 必须使用 headed 模式渲染！**
+
+```python
+# ❌ 错误：headless 模式无法渲染 Godot WebAssembly
+browser = p.chromium.launch(headless=True)
+# 结果：永远卡在加载界面
+
+# ✅ 正确：headed 模式可以正常渲染
+browser = p.chromium.launch(headless=False)
+# 结果：能看到完整的 3D 游戏界面
+```
+
+**原因**：Godot Web 使用 SharedArrayBuffer 和多线程，需要浏览器的完整支持。
+
+**验证方法**：检查截图是否显示 Godot 加载画面（圆形进度条）还是 3D 世界。
+
+---
+
 ## 陷阱 1：变量重复定义
 
 ```gdscript
@@ -34,13 +54,14 @@ label.scale = Vector2(1.5, 1.5)
 ## 陷阱 3：截图时机错误
 
 ```python
-# ❌ 太早
+# ❌ 太早（Godot WASM 需要更长时间）
 page.goto(url)
-page.screenshot(path="out.png")  # 显示加载界面
+page.wait_for_timeout(5000)  # 可能还是加载界面
+page.screenshot(path="out.png")
 
-# ✅ 等待 WASM 加载
+# ✅ 正确：等待足够长时间
 page.goto(url, wait_until="networkidle")
-page.wait_for_timeout(5000)
+page.wait_for_timeout(15000)  # Godot WebAssembly 较大，需要更长等待
 page.screenshot(path="out.png")
 ```
 

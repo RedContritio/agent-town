@@ -7,6 +7,14 @@ description: 使用截图验证调试 Godot Web UI 问题。当用户报告 Godo
 
 通过截图验证来调试和修复 Godot Web UI 问题。
 
+## ⚠️ 重要：必须验证图形界面
+
+**AI 必须实际看到图形界面才能确认问题已修复！**
+
+- Godot WebAssembly 需要 **headed 模式**（非 headless）才能正常渲染
+- headless 模式会卡在加载界面，无法验证 3D 渲染
+- 每次修复后必须截图并用 Read 工具查看
+
 ## 何时使用
 
 以下情况使用本技能：
@@ -14,6 +22,7 @@ description: 使用截图验证调试 Godot Web UI 问题。当用户报告 Godo
 - UI 元素无法正确缩放/调整大小
 - 视觉元素显示错位或大小不对
 - 需要可视化验证 UI 修复效果
+- 代码修改涉及 Godot 场景或脚本
 
 ## 快速开始
 
