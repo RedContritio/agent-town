@@ -5,6 +5,8 @@
 [ext_resource type="Script" path="res://scripts/camera_controller.gd" id="3_camera"]
 [ext_resource type="PackedScene" uid="uid://hud_scene" path="res://scenes/ui/hud.tscn" id="4_hud"]
 [ext_resource type="Script" path="res://scripts/name_label_manager.gd" id="5_name_labels"]
+[ext_resource type="PackedScene" uid="uid://agentpanel001" path="res://scenes/ui/agent_panel.tscn" id="6_agent_panel"]
+[ext_resource type="PackedScene" uid="uid://loginpanel001" path="res://scenes/ui/login_panel.tscn" id="7_login_panel"]
 
 [sub_resource type="Environment" id="Environment_default"]
 background_mode = 1
@@ -64,6 +66,26 @@ surface_material_override/0 = SubResource("StandardMaterial3D_ground")
 [node name="CanvasLayer" type="CanvasLayer" parent="."]
 
 [node name="HUD" parent="CanvasLayer" instance=ExtResource("4_hud")]
+
+[node name="AgentPanel" parent="CanvasLayer" instance=ExtResource("6_agent_panel")]
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -336.0
+offset_top = 16.0
+offset_right = -16.0
+offset_bottom = 416.0
+grow_horizontal = 0
+
+[node name="LoginPanel" parent="CanvasLayer" instance=ExtResource("7_login_panel")]
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 16.0
+offset_top = -216.0
+offset_right = 296.0
+offset_bottom = -16.0
+grow_vertical = 0
 
 [node name="NameLabels" type="CanvasLayer" parent="."]
 script = ExtResource("5_name_labels")

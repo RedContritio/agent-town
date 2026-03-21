@@ -6,8 +6,10 @@ var agent_id: String
 var agent_name: String
 var agent_color: Color
 var target_position: Vector3
+var agent_data: Dictionary = {}
 
 @onready var mesh: MeshInstance3D = $Mesh
+@onready var agent_panel: AgentPanel = get_tree().get_root().get_node("Main/CanvasLayer/AgentPanel")
 
 const COLORS = [
 	Color(0.31, 0.76, 0.97),  # Cyan
@@ -22,6 +24,7 @@ func setup(data: Dictionary):
 	setup_with_height(data, 0.0)
 
 func setup_with_height(data: Dictionary, ground_height: float):
+	agent_data = data
 	agent_id = data.get("id", "")
 	agent_name = data.get("name", "Unknown")
 	
@@ -67,6 +70,24 @@ func _ready():
 	# Bobbing animation - apply to mesh only, not the entire node
 	# This ensures name labels (in screen space UI) don't bounce with the model
 	_start_bobbing_animation()
+	
+	# Enable input processing for click detection
+	input_event.connect(_on_input_event)
+	# Make sure we have collision for clicking
+	if not has_node("CollisionShape3D"):
+		var collision = CollisionShape3D.new()
+		var shape = BoxShape3D.new()
+		shape.size = Vector3(0.8, 1.8, 0.8)
+		collision.shape = shape
+		add_child(collision)
+
+func _on_input_event(camera: Node, event: InputEvent, position: Vector3, normal: Vector3, shape_idx: int):
+	if event is InputEventMouseButton:
+		if event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
+			# Show agent panel with this agent's data
+			if agent_panel and not agent_data.is_empty():
+				agent_panel.show_for_agent(agent_data)
+				print("Selected agent: ", agent_name)
 
 func _start_bobbing_animation():
 	if mesh == null:

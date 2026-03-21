@@ -1,0 +1,123 @@
+[gd_scene load_steps=3 format=3 uid="uid://agentpanel001"]
+
+[ext_resource type="Script" path="res://scripts/ui/agent_panel.gd" id="1_script"]
+[ext_resource type="Theme" uid="uid://uitheme" path="res://resources/ui_theme.tres" id="2_theme"]
+
+[node name="AgentPanel" type="PanelContainer"]
+offset_right = 320.0
+offset_bottom = 400.0
+theme = ExtResource("2_theme")
+script = ExtResource("1_script")
+
+[node name="VBoxContainer" type="VBoxContainer" parent="."]
+layout_mode = 2
+offset_left = 16.0
+offset_top = 16.0
+offset_right = 304.0
+offset_bottom = 384.0
+theme_override_constants/separation = 12
+
+[node name="InfoSection" type="VBoxContainer" parent="VBoxContainer"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="AgentNameLabel" type="Label" parent="VBoxContainer/InfoSection"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.31, 0.765, 0.969, 1)
+theme_override_font_sizes/font_size = 18
+text = "Agent: Unknown"
+
+[node name="PositionLabel" type="Label" parent="VBoxContainer/InfoSection"]
+layout_mode = 2
+text = "Position: (0, 0)"
+
+[node name="HSeparator" type="HSeparator" parent="VBoxContainer/InfoSection"]
+layout_mode = 2
+
+[node name="HPBar" type="ProgressBar" parent="VBoxContainer/InfoSection"]
+layout_mode = 2
+max_value = 100.0
+value = 100.0
+
+[node name="HPLabel" type="Label" parent="VBoxContainer/InfoSection/HPBar"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -20.0
+offset_top = -11.0
+offset_right = 20.0
+offset_bottom = 11.0
+grow_horizontal = 2
+grow_vertical = 2
+text = "100/100"
+horizontal_alignment = 1
+
+[node name="StaminaBar" type="ProgressBar" parent="VBoxContainer/InfoSection"]
+layout_mode = 2
+max_value = 100.0
+value = 100.0
+
+[node name="StaminaLabel" type="Label" parent="VBoxContainer/InfoSection/StaminaBar"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -20.0
+offset_top = -11.0
+offset_right = 20.0
+offset_bottom = 11.0
+grow_horizontal = 2
+grow_vertical = 2
+text = "100/100"
+horizontal_alignment = 1
+
+[node name="BalanceLabel" type="Label" parent="VBoxContainer/InfoSection"]
+layout_mode = 2
+text = "Balance: 0"
+
+[node name="HSeparator2" type="HSeparator" parent="VBoxContainer"]
+layout_mode = 2
+
+[node name="TaskSection" type="VBoxContainer" parent="VBoxContainer"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 8
+
+[node name="TaskTitle" type="Label" parent="VBoxContainer/TaskSection"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.31, 0.765, 0.969, 1)
+text = "Task Stack (LIFO)"
+
+[node name="NoAuthLabel" type="Label" parent="VBoxContainer/TaskSection"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.533, 0.533, 0.533, 1)
+text = "Login with CLI token to view tasks"
+autowrap_mode = 3
+
+[node name="ScrollContainer" type="ScrollContainer" parent="VBoxContainer/TaskSection"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="TaskList" type="VBoxContainer" parent="VBoxContainer/TaskSection/ScrollContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 4
+
+[node name="ButtonSection" type="HBoxContainer" parent="VBoxContainer"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="RefreshButton" type="Button" parent="VBoxContainer/ButtonSection"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Refresh"
+
+[node name="CreateTaskButton" type="Button" parent="VBoxContainer/ButtonSection"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "New Task"

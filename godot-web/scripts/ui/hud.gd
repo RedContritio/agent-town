@@ -7,6 +7,7 @@ class_name HUD
 @onready var agent_count_label: Label = $TopLeftPanel/VBoxContainer/AgentCountLabel
 @onready var building_count_label: Label = $TopLeftPanel/VBoxContainer/BuildingCountLabel
 @onready var block_count_label: Label = $TopLeftPanel/VBoxContainer/BlockCountLabel
+@onready var chunk_count_label: Label = $TopLeftPanel/VBoxContainer/ChunkCountLabel
 @onready var seed_label: Label = $TopLeftPanel/VBoxContainer/SeedLabel
 @onready var status_label: Label = $StatusLabel
 @onready var building_legend: VBoxContainer = $TopRightPanel/VBoxContainer/BuildingLegend
@@ -15,6 +16,7 @@ var world_info: Dictionary = {}
 var agent_count: int = 0
 var building_count: int = 0
 var block_count: int = 0
+var chunk_count: int = 0
 
 func _ready():
 	# Connect to API signals
@@ -39,21 +41,22 @@ func _on_world_info(info: Dictionary):
 	_update_counts()
 	status_label.text = "Connected"
 	
-	# Fetch map data
-	api_client.fetch_map(0, 0, 20)
+	# Map data will be loaded by WorldManager based on camera position
 
 func _on_agents_received(agents: Array):
 	agent_count = agents.size()
 	_update_counts()
 
 func _on_map_received(map_data: Dictionary):
-	# Calculate total blocks from chunks
+	# Calculate chunks and total blocks
 	if map_data.has("chunks"):
+		chunk_count = map_data["chunks"].size()
 		var total = 0
 		for chunk in map_data["chunks"]:
 			total += chunk.get("blocks", []).size()
 		block_count = total
 	elif map_data.has("blocks"):
+		chunk_count = 1
 		block_count = map_data["blocks"].size()
 	_update_counts()
 
@@ -64,6 +67,7 @@ func _update_counts():
 	agent_count_label.text = "Agents: " + str(agent_count)
 	building_count_label.text = "Buildings: " + str(building_count)
 	block_count_label.text = "Blocks: " + str(block_count)
+	chunk_count_label.text = "Chunks: " + str(chunk_count)
 
 func _create_building_legend():
 	# From docs/VISUAL_DESIGN.md - Appendix B: buildingColors

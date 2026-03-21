@@ -133,3 +133,6 @@ func get_camera_info() -> Dictionary:
 		"polar_deg": rad_to_deg(polar),
 		"height": position.y
 	}
+
+func get_target_position() -> Vector3:
+	return target_position

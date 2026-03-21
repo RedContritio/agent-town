@@ -11,6 +11,15 @@ class_name WorldManager
 const AGENT_SCENE := preload("res://scenes/entities/agent.tscn")
 const BUILDING_SCENE := preload("res://scenes/entities/building.tscn")
 
+# Chunk 加载配置
+const CHUNK_SIZE := 32           # 每个 chunk 32x32 方块
+const MAX_CHUNKS_PER_REQUEST := 250  # 后端硬上限
+const LOAD_MARGIN_CHUNKS := 1    # 预加载边缘 chunk 数量
+
+var camera: Camera3D = null
+var last_loaded_center_chunk: Vector2i = Vector2i(-9999, -9999)
+var last_loaded_chunk_radius: int = 0
+
 var terrain_materials: Dictionary = {}
 var world_info: Dictionary = {}
 var terrain_height_map: Dictionary = {}  # "x,z" -> surface height (top of top block)
@@ -113,6 +122,61 @@ func _create_glass_material(color: Color) -> StandardMaterial3D:
 func _on_world_info(info: Dictionary):
 	world_info = info
 	print("World info: ", info)
+	
+	# 获取相机引用
+	camera = get_viewport().get_camera_3d()
+	
+	# 加载初始 chunks（以原点为中心）
+	_update_chunks_for_camera()
+
+func _process(delta: float):
+	# 检查相机位置变化，按需加载新的 chunks
+	if camera:
+		_update_chunks_for_camera()
+
+func _update_chunks_for_camera():
+	if not camera:
+		return
+	
+	# 获取相机目标点（看向的位置）作为中心点
+	# 相机设计是第三人称，target_position 是中心
+	var camera_controller = camera.get_parent()
+	var center_pos: Vector3
+	
+	if camera_controller.has_method("get_target_position"):
+		center_pos = camera_controller.get_target_position()
+	else:
+		# 使用相机位置投射到地面的点
+		var camera_pos = camera.global_position
+		center_pos = Vector3(camera_pos.x, 0, camera_pos.z)
+	
+	# 转换为 chunk 坐标
+	var cx = int(floor(center_pos.x / CHUNK_SIZE))
+	var cz = int(floor(center_pos.z / CHUNK_SIZE))  # Godot 的 Z 对应世界的 Y
+	var center_chunk = Vector2i(cx, cz)
+	
+	# 计算需要的 chunk 半径
+	# 根据相机高度（距离地面的高度）计算视野范围
+	var camera_height = camera.global_position.y
+	var view_distance = camera_height * 2.0  # 粗略估计视野距离
+	var chunk_radius = int(ceil(view_distance / CHUNK_SIZE)) + LOAD_MARGIN_CHUNKS
+	
+	# 限制最大半径，确保不超过 MAX_CHUNKS_PER_REQUEST
+	# MAX_CHUNKS = (2*r+1)^2 <= 250
+	# 解得 r <= 7 (因为 (2*7+1)^2 = 225, (2*8+1)^2 = 289)
+	var max_radius = int((sqrt(MAX_CHUNKS_PER_REQUEST) - 1) / 2)
+	if chunk_radius > max_radius:
+		chunk_radius = max_radius
+	
+	# 检查是否足够远离上次加载中心
+	var chunk_changed = center_chunk != last_loaded_center_chunk
+	var radius_changed = chunk_radius != last_loaded_chunk_radius
+	
+	if chunk_changed or radius_changed:
+		print("Loading chunks: center=", center_chunk, " radius=", chunk_radius)
+		api_client.fetch_chunks(cx, cz, chunk_radius)
+		last_loaded_center_chunk = center_chunk
+		last_loaded_chunk_radius = chunk_radius
 
 func _on_agents_update(agents: Array):
 	# Clear existing agents and labels
@@ -167,8 +231,6 @@ func _get_ground_height(x: int, z: int) -> float:
 	var key = "%d,%d" % [x, z]
 	# Default to 1.0 (single grass block height) if no terrain data
 	return terrain_height_map.get(key, 1.0)
-
-const CHUNK_SIZE = 32
 
 func _update_terrain_from_chunks(chunks: Array):
 	# Clear existing terrain and height map
