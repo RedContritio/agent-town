@@ -1,119 +1,216 @@
----
-name: godot-web-debug
-description: 使用截图验证调试 Godot Web UI 问题。当用户报告 Godot Web UI 问题时触发（如"UI元素大小不对"、"标签没缩放"、"按钮位置错了"）。使用 Playwright 自动截图来观察修复前后的实际 UI 状态。
----
+# Godot Web Debug Skill
 
-# Godot Web 调试
+用于调试 Godot Web 导出的工具集，提供截图、相机控制等功能。
 
-通过截图验证来调试和修复 Godot Web UI 问题。
+## 架构
 
-## ⚠️ 重要：必须验证图形界面
+```
+┌─────────────┐      HTTP      ┌─────────────┐     WebSocket    ┌─────────────┐
+│   Client    │ ─────────────→ │ Debug Server│ ←──────────────→ │  Godot Web  │
+│  (client.sh)│                │   (:8081)   │                  │  (浏览器)    │
+└─────────────┘                └─────────────┘                  └─────────────┘
+```
 
-**AI 必须实际看到图形界面才能确认问题已修复！**
+## 安装
 
-- Godot WebAssembly 需要 **headed 模式**（非 headless）才能正常渲染
-- headless 模式会卡在加载界面，无法验证 3D 渲染
-- 每次修复后必须截图并用 Read 工具查看
+### 1. 安装依赖
 
-## 何时使用
+```bash
+# Go 1.22+
+/usr/local/go/bin/go version
 
-以下情况使用本技能：
-- 用户报告 Godot Web UI 渲染问题
-- UI 元素无法正确缩放/调整大小
-- 视觉元素显示错位或大小不对
-- 需要可视化验证 UI 修复效果
-- 代码修改涉及 Godot 场景或脚本
+# Playwright
+pip3 install playwright
+python3 -m playwright install chromium
+```
+
+### 2. 构建
+
+```bash
+# 进入 skill 目录
+cd .agents/skills/godot-web-debug
+
+# 构建 debug server
+cd server
+/usr/local/go/bin/go build -o ../bin/debug-server .
+cd ..
+
+# 确保脚本可执行
+chmod +x bin/*.sh bin/*.py
+```
 
 ## 快速开始
 
-```bash
-# 1. 重启服务器并截图（脚本会自动准备 Playwright 环境）
-./.agents/skills/godot-web-debug/scripts/restart-and-capture.sh
-
-# 2. 查看截图确认问题
-# → 使用 Read 工具读取 /tmp/godot_screenshot.png
-
-# 3. 或者单独截图（服务器已运行的情况下）
-./.agents/skills/godot-web-debug/scripts/screenshot.sh /tmp/my_screenshot.png
-
-# 4. 修复代码...
-
-# 5. 验证修复
-./.agents/skills/godot-web-debug/scripts/restart-and-capture.sh
-# → 与之前的截图对比
-```
-
-## 工作流程
-
-### 1. 复现问题
+### 启动完整调试环境
 
 ```bash
-# 重启服务器（确保使用最新代码）
-./.agents/skills/godot-web-debug/scripts/restart-server.sh
+# 使用启动脚本（推荐）
+./bin/debug-start.sh
 
-# 捕获当前状态
-./.agents/skills/godot-web-debug/scripts/screenshot.sh /tmp/godot_before.png
-
-# 查看截图（使用 Read 工具读取图片路径）
-# 路径: /tmp/godot_before.png
+# 或手动启动各组件
+./bin/debug-server &          # 1. 启动 debug server
+make run                      # 2. 启动主服务器
+./bin/launch-browser.py       # 3. 启动浏览器
 ```
 
-### 2. 分析问题
-
-基于截图观察：
-- 元素位置是否正确？
-- 大小是否符合预期？
-- 缩放是否按预期工作？
-
-复杂问题请参考 [references/debug-patterns.md](references/debug-patterns.md)
-
-### 3. 修复
-
-根据观察结果应用修复。常见模式：
-
-```gdscript
-# 标签缩放问题
-var scale = target_size / base_size
-label.scale = Vector2(scale, scale)
-label.position = screen_pos - (label.size * label.scale) / 2
-```
-
-### 4. 验证
+### 停止环境
 
 ```bash
-# 重新构建并截图
-make web && ./.agents/skills/godot-web-debug/scripts/restart-server.sh
-./.agents/skills/godot-web-debug/scripts/screenshot.sh /tmp/godot_after.png
-
-# 对比（使用 Read 工具读取图片路径）
-# 路径: /tmp/godot_after.png
+./bin/debug-stop.sh
 ```
 
-## 常见问题
+## 脚本说明
 
-| 问题 | 原因 | 解决方案 |
-|------|------|----------|
-| 标签背景不缩放 | Web 布局延迟 | 使用 `label.scale` 而非 `font_size` 覆盖 |
-| 场景消失 | GDScript 编译错误 | 检查变量重复定义 |
-| 截图为灰色 | WASM 崩溃 | 检查文件大小（<100KB = 崩溃） |
+### 服务器端
 
-更多内容见 [references/common-traps.md](references/common-traps.md)
+| 脚本 | 用途 | 端口 |
+|------|------|------|
+| `bin/debug-server` | WebSocket/HTTP 桥接服务器 | 8081 |
+| `bin/client.sh` | HTTP 客户端 (Bash) | - |
+| `bin/client.py` | HTTP 客户端 (Python，功能更完整) | - |
 
-## 脚本
+### 浏览器端
 
-所有 AI 调试脚本位于 `.agents/skills/godot-web-debug/scripts/`：
+| 脚本 | 用途 |
+|------|------|
+| `bin/launch-browser.py` | 启动 Playwright 浏览器，自动连接到 debug server |
 
-- `restart-server.sh` - 重启 Godot Web 服务器
-- `restart-and-capture.sh` - 重启+截图组合命令
-- `screenshot.sh` - 截图工具（调用 capture.py）
-- `capture.py` - Playwright 截图实现
+### 工作流脚本
 
-## 共享库
+| 脚本 | 用途 |
+|------|------|
+| `bin/debug-start.sh` | 一键启动完整环境（server + browser） |
+| `bin/debug-stop.sh` | 停止所有 debug 相关进程 |
 
-- `lib.sh` - 技能内部共享的工具函数（路径查找、虚拟环境管理等）
+## 使用示例
 
-## 参考文档
+### 1. 截图
 
-- [references/debug-patterns.md](references/debug-patterns.md) - 调试工作流模式
-- [references/common-traps.md](references/common-traps.md) - Godot Web 常见陷阱
-- [references/gdscript-web-diffs.md](references/gdscript-web-diffs.md) - Web 与桌面版行为差异
+```bash
+# 先启动环境
+./bin/debug-start.sh
+
+# 等待 Godot 连接完成（约 15 秒）
+
+# 发送截图命令
+./bin/client.sh capture
+
+# 或使用 Python 客户端
+./server/client.py capture
+```
+
+### 2. 获取相机信息
+
+```bash
+./bin/client.sh info
+```
+
+输出示例：
+```json
+{
+  "target": [0.0, 1.5, 0.0],
+  "distance": 25.0,
+  "azimuth_deg": -45.0,
+  "polar_deg": 60.0
+}
+```
+
+### 3. 设置预设视角
+
+```bash
+./bin/client.sh preset top     # 俯视
+./bin/client.sh preset side    # 侧面
+./bin/client.sh preset north   # 北面
+```
+
+### 4. 自定义相机位置
+
+```bash
+./bin/client.sh camera '{"target":[0,0,0],"distance":30,"azimuth":0,"polar":45}'
+```
+
+## API 端点
+
+Debug Server 提供以下 HTTP API：
+
+| 端点 | 方法 | 描述 |
+|------|------|------|
+| `/health` | GET | 健康检查，返回 godot 连接状态 |
+| `/api/camera` | POST | 设置相机参数 |
+| `/api/preset` | POST | 设置预设视角 |
+| `/api/capture` | POST | 截图 |
+| `/api/info` | GET | 获取相机信息 |
+| `/godot` | WebSocket | Godot 浏览器客户端连接 |
+
+## 故障排查
+
+### 无法捕获 Godot 日志
+
+**现象**：`launch-browser.py` 看不到 `[DebugController]` 日志
+
+**原因**：`time.sleep()` 阻塞了 Playwright 事件循环
+
+**解决**：使用 `page.wait_for_timeout()` 代替 `time.sleep()`
+
+```python
+# 错误
+time.sleep(15)
+
+# 正确
+page.wait_for_timeout(15000)
+```
+
+### Godot 未连接
+
+**检查步骤**：
+
+```bash
+# 1. 检查 debug-server 是否运行
+curl http://localhost:8081/health
+
+# 2. 检查浏览器是否运行
+ps aux | grep launch-browser
+
+# 3. 检查 Godot 控制台日志
+# 查看 launch-browser.py 的输出是否有 "Initializing..."
+```
+
+### 端口占用
+
+```bash
+# 检查 8081 端口
+lsof -i :8081
+
+# 释放端口
+pkill -f debug-server
+```
+
+## 文件结构
+
+```
+.agents/skills/godot-web-debug/
+├── SKILL.md              # 本文件
+├── bin/
+│   ├── debug-start.sh    # 启动完整环境
+│   ├── debug-stop.sh     # 停止环境
+│   ├── launch-browser.py # 启动 Playwright 浏览器
+│   ├── client.sh         # HTTP 客户端 (Bash)
+│   └── debug-server      # 编译后的服务器 (二进制)
+├── server/
+│   ├── main.go           # Debug server 源码
+│   └── go.mod            # Go 依赖
+└── scripts/              # 其他调试脚本
+    ├── capture.py
+    └── ...
+```
+
+## 注意事项
+
+1. **事件循环**：使用 Playwright 时，避免使用 `time.sleep()`，改用 `page.wait_for_timeout()`
+2. **进程管理**：`debug-stop.sh` 只停止由 `debug-start.sh` 创建的进程
+3. **Godot 初始化**：Godot Web 需要约 10-15 秒完成初始化
+
+## 相关文档
+
+- `../../AGENTS.md` - 项目整体架构
+- `../../../docs/VISUAL_DESIGN.md` - 视觉设计规范

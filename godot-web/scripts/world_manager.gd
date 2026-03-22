@@ -13,12 +13,17 @@ const BUILDING_SCENE := preload("res://scenes/entities/building.tscn")
 
 # Chunk 加载配置
 const CHUNK_SIZE := 32           # 每个 chunk 32x32 方块
-const MAX_CHUNKS_PER_REQUEST := 250  # 后端硬上限
-const LOAD_MARGIN_CHUNKS := 1    # 预加载边缘 chunk 数量
+const MAX_CHUNKS_PER_REQUEST := 500  # 后端硬上限，支持更多区块
+const LOAD_MARGIN_CHUNKS := 2    # 预加载边缘 chunk 数量
+const MIN_CHUNK_RADIUS := 3      # 至少加载 3 格半径 (7x7=49 chunks)
+const MAX_CHUNK_RADIUS := 7      # 最大加载 7 格半径 (15x15=225 chunks)
+const UNLOAD_MARGIN := 3         # 卸载边界，超出加载范围3格外的区块会被卸载
 
 var camera: Camera3D = null
 var last_loaded_center_chunk: Vector2i = Vector2i(-9999, -9999)
 var last_loaded_chunk_radius: int = 0
+var debug_view_timer: float = 0.0
+var debug_view_done: bool = false
 
 var terrain_materials: Dictionary = {}
 var world_info: Dictionary = {}
@@ -126,10 +131,37 @@ func _on_world_info(info: Dictionary):
 	# 获取相机引用
 	camera = get_viewport().get_camera_3d()
 	
+	# Debug: Disabled to allow DebugController to control camera
+	# var timer = get_tree().create_timer(4.0)
+	# timer.timeout.connect(_debug_view_gov_hall)
+	
 	# 加载初始 chunks（以原点为中心）
 	_update_chunks_for_camera()
 
+func _debug_view_gov_hall():
+	print("DEBUG: Setting camera to view Gov Hall north wall")
+	if camera:
+		# Disable camera controller's _process
+		var cc = camera.get_parent()
+		if cc:
+			cc.set_process(false)
+			print("DEBUG: Camera controller process disabled")
+		
+		# Directly set camera position and rotation
+		# Gov Hall is at (-12, 0, -12), north wall is at Z = -13
+		# Position camera north of building, looking south
+		camera.global_position = Vector3(-12, 3, -20)  # North of building, height 3
+		camera.look_at(Vector3(-12, 1.5, -12), Vector3.UP)  # Look at building center
+		print("DEBUG: Camera moved to north of Gov Hall")
+
 func _process(delta: float):
+	# Debug: Disabled to allow DebugController to control camera
+	# if not debug_view_done:
+	# 	debug_view_timer += delta
+	# 	if debug_view_timer > 5.0:
+	# 		debug_view_done = true
+	# 		_debug_view_gov_hall()
+	
 	# 检查相机位置变化，按需加载新的 chunks
 	if camera:
 		_update_chunks_for_camera()
@@ -161,12 +193,11 @@ func _update_chunks_for_camera():
 	var view_distance = camera_height * 2.0  # 粗略估计视野距离
 	var chunk_radius = int(ceil(view_distance / CHUNK_SIZE)) + LOAD_MARGIN_CHUNKS
 	
-	# 限制最大半径，确保不超过 MAX_CHUNKS_PER_REQUEST
-	# MAX_CHUNKS = (2*r+1)^2 <= 250
-	# 解得 r <= 7 (因为 (2*7+1)^2 = 225, (2*8+1)^2 = 289)
-	var max_radius = int((sqrt(MAX_CHUNKS_PER_REQUEST) - 1) / 2)
-	if chunk_radius > max_radius:
-		chunk_radius = max_radius
+	# 限制半径范围
+	if chunk_radius < MIN_CHUNK_RADIUS:
+		chunk_radius = MIN_CHUNK_RADIUS
+	if chunk_radius > MAX_CHUNK_RADIUS:
+		chunk_radius = MAX_CHUNK_RADIUS
 	
 	# 检查是否足够远离上次加载中心
 	var chunk_changed = center_chunk != last_loaded_center_chunk
@@ -438,6 +469,23 @@ func _add_block_to_batch(batch: Dictionary, type: String, x: int, y: int, z: int
 		batch[type] = []
 	batch[type].append({"x": x, "y": y, "z": z})
 
+func _unload_distant_chunks(center_chunk: Vector2i, unload_radius: int):
+	# 卸载超出范围的区块（建筑和地形）
+	var unload_distance_sq = unload_radius * unload_radius
+	
+	# 卸载远处建筑
+	for child in buildings_root.get_children():
+		var pos = child.position
+		var chunk_x = int(floor(pos.x / CHUNK_SIZE))
+		var chunk_z = int(floor(pos.z / CHUNK_SIZE))
+		var dist_sq = (chunk_x - center_chunk.x) ** 2 + (chunk_z - center_chunk.y) ** 2
+		if dist_sq > unload_distance_sq:
+			name_labels.remove_label(child)
+			child.queue_free()
+	
+	# 注意：地形卸载较复杂，因为使用 MultiMesh，暂时保留所有地形
+	# 后续可以优化为只渲染可见区域内的地形
+
 func _update_buildings(buildings: Array):
 	# Clear existing buildings and labels
 	for child in buildings_root.get_children():
@@ -447,7 +495,9 @@ func _update_buildings(buildings: Array):
 	# Spawn new buildings
 	for building_data in buildings:
 		var building = BUILDING_SCENE.instantiate()
-		building.setup(building_data)
+		building.add_to_group("buildings")
 		buildings_root.add_child(building)
-		# Add name label
-		name_labels.add_label(building, building_data.get("name", "Building"), Color("#4fc3f7"))
+		# Setup after adding to scene tree so _ready() is called
+		building.setup(building_data)
+		# Add name label - use building_name from the building node
+		name_labels.add_label(building, building.building_name, Color("#4fc3f7"))

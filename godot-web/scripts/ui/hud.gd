@@ -71,14 +71,18 @@ func _update_counts():
 
 func _create_building_legend():
 	# From docs/VISUAL_DESIGN.md - Appendix B: buildingColors
+	# Initial buildings first
 	var types = {
-		"home": Color("#d4a574"),      # 暖木/居住感
-		"shop": Color("#e8a87c"),      # 暖色零售
-		"bank": Color("#4a90d9"),      # 冷蓝金融
-		"exchange": Color("#50c878"),  # 绿交易
-		"park": Color("#6b8e23"),      # 自然绿
-		"office": Color("#8899aa"),    # 灰蓝办公
-		"cafe": Color("#c4956a"),      # 暖褐餐饮
+		"gov_hall": Color("#8b4513"),   # 政府大厅 - 深棕
+		"guide_hall": Color("#4169e1"), # 引导大厅 - 皇家蓝
+		"quest": Color("#228b22"),      # 委托处 - 森林绿
+		"shop": Color("#ff8c00"),       # 商店 - 深橙
+		"home": Color("#d4a574"),       # 住宅
+		"bank": Color("#4a90d9"),       # 银行
+		"exchange": Color("#50c878"),   # 交易所
+		"park": Color("#6b8e23"),       # 公园
+		"office": Color("#8899aa"),     # 办公室
+		"cafe": Color("#c4956a"),       # 咖啡馆
 	}
 	
 	for type_name in types.keys():

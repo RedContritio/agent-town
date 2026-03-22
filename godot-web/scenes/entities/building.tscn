@@ -1,22 +1,6 @@
-[gd_scene load_steps=3 format=3 uid="uid://building_entity"]
+[gd_scene load_steps=2 format=3 uid="uid://building_entity"]
 
 [ext_resource type="Script" path="res://scripts/entities/building.gd" id="1_script"]
 
-[sub_resource type="BoxMesh" id="BoxMesh_1"]
-size = Vector3(3, 3, 3)
-
 [node name="Building" type="StaticBody3D"]
 script = ExtResource("1_script")
-
-[node name="Mesh" type="MeshInstance3D" parent="."]
-mesh = SubResource("BoxMesh_1")
-
-[node name="Roof" type="MeshInstance3D" parent="."]
-transform = Transform3D(0.707107, 0, 0.707107, 0, 1, 0, -0.707107, 0, 0.707107, 0, 3.75, 0)
-
-[node name="Label3D" type="Label3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 4.5, 0)
-pixel_size = 0.01
-modulate = Color(0.31, 0.76, 0.97, 1)
-text = "Building"
-font_size = 48

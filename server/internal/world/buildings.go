@@ -8,18 +8,18 @@ import (
 
 // 建筑类型常量
 const (
-	BuildingTownHall   = "town_hall"
-	BuildingBank       = "bank"
-	BuildingQuestBoard = "quest_board"
-	BuildingShop       = "shop"
+	BuildingGovHall   = "gov_hall"   // 政府大厅
+	BuildingGuideHall = "guide_hall" // 引导大厅
+	BuildingQuest     = "quest"      // 委托处
+	BuildingShop      = "shop"       // 商店
 )
 
 // BuildingColors 建筑颜色映射
 var BuildingColors = map[string]string{
-	BuildingTownHall:   "#8b7355", // 棕色
-	BuildingBank:       "#4a90d9", // 冷蓝
-	BuildingQuestBoard: "#50c878", // 清爽绿
-	BuildingShop:       "#e8a87c", // 暖橙
+	BuildingGovHall:   "#8b4513", // 深棕色 - 政府权威
+	BuildingGuideHall: "#4169e1", // 皇家蓝 - 引导信任
+	BuildingQuest:     "#228b22", // 森林绿 - 委托任务
+	BuildingShop:      "#ff8c00", // 深橙色 - 商店贸易
 }
 
 // Building 建筑
@@ -56,51 +56,51 @@ func NewBuildingGenerator(seed int64) *BuildingGenerator {
 }
 
 // GenerateInitialBuildings 生成初始四建筑
-// 固定在初始区块的四个角落
+// 固定在初始区块的四个角落，2x2大小
 func (bg *BuildingGenerator) GenerateInitialBuildings() []Building {
 	buildings := []Building{
 		{
-			ID:      "building-townhall",
-			Name:    "Town Hall",
-			Type:    BuildingTownHall,
+			ID:      "building-gov-hall",
+			Name:    "政府大厅",
+			Type:    BuildingGovHall,
 			OwnerID: "government",
-			Anchor:  Position{X: -15, Y: -15, Z: 0},
-			Width:   4,
-			Depth:   4,
-			Height:  2,
+			Anchor:  Position{X: -12, Y: -12, Z: 0},
+			Width:   2,
+			Depth:   2,
+			Height:  3,
 		},
 		{
-			ID:      "building-bank",
-			Name:    "Bank",
-			Type:    BuildingBank,
+			ID:      "building-guide-hall",
+			Name:    "引导大厅",
+			Type:    BuildingGuideHall,
 			OwnerID: "government",
-			Anchor:  Position{X: 15, Y: -15, Z: 0},
-			Width:   3,
-			Depth:   3,
-			Height:  2,
+			Anchor:  Position{X: 10, Y: -12, Z: 0},
+			Width:   2,
+			Depth:   2,
+			Height:  3,
 		},
 		{
 			ID:      "building-quest",
-			Name:    "Quest Board",
-			Type:    BuildingQuestBoard,
+			Name:    "委托处",
+			Type:    BuildingQuest,
 			OwnerID: "government",
-			Anchor:  Position{X: -15, Y: 15, Z: 0},
-			Width:   3,
-			Depth:   3,
-			Height:  1,
+			Anchor:  Position{X: -12, Y: 10, Z: 0},
+			Width:   2,
+			Depth:   2,
+			Height:  3,
 		},
 		{
 			ID:      "building-shop",
-			Name:    "General Shop",
+			Name:    "商店",
 			Type:    BuildingShop,
 			OwnerID: "government",
-			Anchor:  Position{X: 15, Y: 15, Z: 0},
-			Width:   3,
-			Depth:   3,
-			Height:  1,
+			Anchor:  Position{X: 10, Y: 10, Z: 0},
+			Width:   2,
+			Depth:   2,
+			Height:  3,
 		},
 	}
-	
+
 	return buildings
 }
 
@@ -122,7 +122,7 @@ func (bg *BuildingGenerator) CreateBuilding(
 		Depth:   depth,
 		Height:  height,
 	}
-	
+
 	return building, nil
 }
 

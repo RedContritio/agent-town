@@ -8,7 +8,7 @@ class_name CameraController
 # - 避免完全俯视导致的视角奇点
 
 @export var min_distance: float = 5.0     # 最小距离(米)
-@export var max_distance: float = 60.0    # 最大距离(米)
+@export var max_distance: float = 150.0   # 最大距离(米)，允许更远视角
 @export var min_height: float = 2.5       # 相机最低高度(米)，高于地面方块
 @export var zoom_speed: float = 0.1       # 缩放速度
 @export var rotate_speed: float = 0.005   # 旋转速度
@@ -31,7 +31,7 @@ var is_panning := false
 var last_mouse_pos: Vector2
 
 func _ready():
-	_update_camera_position()
+	update_camera_position()
 
 func _input(event):
 	# 鼠标滚轮缩放
@@ -39,13 +39,13 @@ func _input(event):
 		if event.button_index == MOUSE_BUTTON_WHEEL_UP:
 			distance *= (1.0 - zoom_speed)
 			distance = clamp(distance, min_distance, max_distance)
-			_update_camera_position()
+			update_camera_position()
 			get_viewport().set_input_as_handled()
 			return
 		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
 			distance *= (1.0 + zoom_speed)
 			distance = clamp(distance, min_distance, max_distance)
-			_update_camera_position()
+			update_camera_position()
 			get_viewport().set_input_as_handled()
 			return
 		elif event.button_index == MOUSE_BUTTON_LEFT:
@@ -68,7 +68,7 @@ func _input(event):
 			polar -= delta.y * rotate_speed
 			# 限制极角：不能接近完全俯视（避免奇点），不能低于地平线
 			polar = clamp(polar, min_polar, max_polar)
-			_update_camera_position()
+			update_camera_position()
 			last_mouse_pos = event.position
 			get_viewport().set_input_as_handled()
 		elif is_panning:
@@ -84,11 +84,11 @@ func _input(event):
 			# 垂直拖动：delta.y 正=下，目标点应向相机前方移动（场景向下）
 			# 向上拖动(delta.y负)时，目标点应向相机后方移动
 			target_position += forward * delta.y * move_speed
-			_update_camera_position()
+			update_camera_position()
 			last_mouse_pos = event.position
 			get_viewport().set_input_as_handled()
 
-func _update_camera_position():
+func update_camera_position():
 	# 球坐标计算相机位置
 	var sin_polar = sin(polar)
 	var cos_polar = cos(polar)
@@ -122,7 +122,7 @@ func _update_camera_position():
 
 func focus_on_position(pos: Vector3):
 	target_position = Vector3(pos.x, 1.5, pos.z)
-	_update_camera_position()
+	update_camera_position()
 
 func get_camera_info() -> Dictionary:
 	return {
@@ -136,3 +136,37 @@ func get_camera_info() -> Dictionary:
 
 func get_target_position() -> Vector3:
 	return target_position
+
+# Set camera to view a specific position from a specific direction
+func set_view_from_direction(target_pos: Vector3, direction: String, distance_override: float = 15.0):
+	# direction: "north", "south", "east", "west", "top"
+	target_position = target_pos
+	
+	match direction:
+		"north":  # View from north (looking south, -Z to +Z)
+			azimuth = PI / 2  # 90 degrees, looking south
+			polar = PI / 3    # 60 degrees from vertical
+		"south":  # View from south (looking north, +Z to -Z)
+			azimuth = -PI / 2  # -90 degrees, looking north
+			polar = PI / 3
+		"east":   # View from east (looking west, +X to -X)
+			azimuth = PI  # 180 degrees, looking west
+			polar = PI / 3
+		"west":   # View from west (looking east, -X to +X)
+			azimuth = 0  # 0 degrees, looking east
+			polar = PI / 3
+		"top":    # Top down view
+			azimuth = 0
+			polar = PI / 6  # 30 degrees from vertical
+		_:
+			azimuth = 0
+			polar = PI / 3
+	
+	distance = distance_override
+	update_camera_position()
+
+# Quick method to view Gov Hall north wall
+func view_gov_hall_north_wall():
+	# Gov Hall at (-12, 0, -12), north wall is on -Z side
+	# Position camera north of the building, looking south
+	set_view_from_direction(Vector3(-12, 1.5, -12), "north", 8.0)

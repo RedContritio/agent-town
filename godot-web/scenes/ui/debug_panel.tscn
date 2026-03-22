@@ -1,0 +1,116 @@
+[gd_scene load_steps=3 format=3 uid="uid://debug_panel"]
+
+[ext_resource type="Theme" uid="uid://ui_theme_main" path="res://resources/ui_theme.tres" id="1_theme"]
+[ext_resource type="Script" path="res://scripts/ui/debug_panel.gd" id="2_script"]
+
+[sub_resource type="StyleBoxFlat" id="PanelStyle"]
+bg_color = Color(0.102, 0.102, 0.18, 0.95)
+border_color = Color(0.2, 0.8, 0.2, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_left = 8
+corner_radius_bottom_right = 8
+
+[node name="DebugPanel" type="Panel"]
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -400.0
+offset_top = -120.0
+offset_right = 400.0
+offset_bottom = -10.0
+grow_horizontal = 2
+grow_vertical = 0
+theme = ExtResource("1_theme")
+theme_override_styles/panel = SubResource("PanelStyle")
+script = ExtResource("2_script")
+
+[node name="VBox" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 10.0
+offset_top = 8.0
+offset_right = -10.0
+offset_bottom = -8.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 8
+
+[node name="Title" type="Label" parent="VBox"]
+layout_mode = 2
+text = "[ DEBUG PANEL ]"
+horizontal_alignment = 1
+
+[node name="HBox1" type="HBoxContainer" parent="VBox"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="Title2" type="Label" parent="VBox/HBox1"]
+layout_mode = 2
+text = "Buildings:"
+metadata/_edit_use_anchors_ = true
+
+[node name="BtnGov" type="Button" parent="VBox/HBox1"]
+layout_mode = 2
+text = "Gov(-14,-14)"
+metadata/_edit_use_anchors_ = true
+
+[node name="BtnGuide" type="Button" parent="VBox/HBox1"]
+layout_mode = 2
+text = "Guide(12,-14)"
+
+[node name="BtnQuest" type="Button" parent="VBox/HBox1"]
+layout_mode = 2
+text = "Quest(-14,12)"
+
+[node name="BtnShop" type="Button" parent="VBox/HBox1"]
+layout_mode = 2
+text = "Shop(12,12)"
+
+[node name="HBox2" type="HBoxContainer" parent="VBox"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="Title2" type="Label" parent="VBox/HBox2"]
+layout_mode = 2
+text = "Views:"
+
+[node name="BtnBoundary" type="Button" parent="VBox/HBox2"]
+layout_mode = 2
+text = "Boundary"
+
+[node name="BtnCenter" type="Button" parent="VBox/HBox2"]
+layout_mode = 2
+text = "Center(0,0)"
+
+[node name="BtnFar" type="Button" parent="VBox/HBox2"]
+layout_mode = 2
+text = "Far View"
+
+[node name="HBox3" type="HBoxContainer" parent="VBox"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="Title3" type="Label" parent="VBox/HBox3"]
+layout_mode = 2
+text = "Zoom:"
+
+[node name="BtnZoomOut" type="Button" parent="VBox/HBox3"]
+layout_mode = 2
+text = "Out"
+
+[node name="BtnZoomIn" type="Button" parent="VBox/HBox3"]
+layout_mode = 2
+text = "In"
+
+[node name="InfoLabel" type="Label" parent="VBox"]
+layout_mode = 2
+text = "Camera: (0, 0, 0)"

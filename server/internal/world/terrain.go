@@ -30,32 +30,53 @@ func NewTerrainGenerator(seed int64) *TerrainGenerator {
 }
 
 // GenerateChunk 生成单个区块的地形
+// 初始区块需要非常平坦以容纳基础建筑
 func (tg *TerrainGenerator) GenerateChunk(cx, cy int) map[string]Block {
 	blocks := make(map[string]Block)
 	cm := &ChunkManager{chunkSize: ChunkSize}
-	
+
 	minHeight, maxHeight := 999, -999
 	heightDist := make(map[int]int)
-	
+
+	// 判断是否为初始区块（中心3x3区域）
+	isInitialArea := cx >= -1 && cx <= 1 && cy >= -1 && cy <= 1
+
 	for bx := 0; bx < ChunkSize; bx++ {
 		for by := 0; by < ChunkSize; by++ {
 			x, y := cm.ChunkToWorld(cx, cy, bx, by)
-			
-			// 使用分形噪声生成高度
-			heightValue := tg.noise.FractalNoise(
-				float64(x)*0.05,
-				float64(y)*0.05,
-				4,   // octaves
-				0.5, // persistence
-				2.0, // lacunarity
-			)
-			
-			// 根据高度决定地形类型
-			terrainType := tg.getTerrainType(heightValue)
-			
-			// 计算实际高度
-			height := tg.getHeight(heightValue, terrainType)
-			
+
+			var height int
+			var terrainType string
+
+			if isInitialArea {
+				// 初始区域：完全平坦，固定高度为1
+				height = 1
+				terrainType = TerrainGrass
+				// 在边缘添加少量水域作为边界
+				if cx == -1 && bx < 4 || cx == 1 && bx > 27 ||
+					cy == -1 && by < 4 || cy == 1 && by > 27 {
+					// 边缘区域保持原有生成逻辑
+					heightValue := tg.noise.FractalNoise(
+						float64(x)*0.02,
+						float64(y)*0.02,
+						3, 0.4, 2.0,
+					)
+					terrainType = tg.getTerrainType(heightValue)
+					height = tg.getHeight(heightValue, terrainType)
+				}
+			} else {
+				// 外部区域：使用噪声生成，但也很平坦
+				heightValue := tg.noise.FractalNoise(
+					float64(x)*0.015, // 更低频率
+					float64(y)*0.015,
+					2,   // 更少octaves
+					0.3, // 更低persistence
+					2.0,
+				)
+				terrainType = tg.getTerrainType(heightValue)
+				height = tg.getHeight(heightValue, terrainType)
+			}
+
 			block := Block{
 				X:           x,
 				Y:           y,
@@ -63,37 +84,39 @@ func (tg *TerrainGenerator) GenerateChunk(cx, cy int) map[string]Block {
 				Height:      height,
 				TerrainType: terrainType,
 			}
-			
+
 			key := fmt.Sprintf("%d,%d", bx, by)
 			blocks[key] = block
-			
-			// Track stats
-			if height < minHeight { minHeight = height }
-			if height > maxHeight { maxHeight = height }
+
+			if height < minHeight {
+				minHeight = height
+			}
+			if height > maxHeight {
+				maxHeight = height
+			}
 			heightDist[height]++
 		}
 	}
-	
-	fmt.Printf("[Terrain] Generated chunk (%d,%d): height range [%d, %d], dist=%v\n", 
+
+	fmt.Printf("[Terrain] Generated chunk (%d,%d): height range [%d, %d], dist=%v\n",
 		cx, cy, minHeight, maxHeight, heightDist)
-	
+
 	return blocks
 }
 
 // getTerrainType 根据噪声值获取地形类型
 func (tg *TerrainGenerator) getTerrainType(value float64) string {
 	switch {
-	case value < -0.35:
+	case value < -0.6:
 		return TerrainWater
-	case value < -0.15:
+	case value < -0.4:
 		return TerrainSand
 	case value > 0.5:
 		return TerrainHill
 	default:
-		// 在草地中随机分布农田
-		// 使用另一个噪声值来决定
+		// 减少农田分布
 		farmlandNoise := tg.noise.Noise2D(value*10+100, value*10+200)
-		if farmlandNoise > 0.5 {
+		if farmlandNoise > 0.7 {
 			return TerrainFarmland
 		}
 		return TerrainGrass
@@ -101,39 +124,17 @@ func (tg *TerrainGenerator) getTerrainType(value float64) string {
 }
 
 // getHeight 根据噪声值和地形类型计算高度
-// 使用连续的噪声值映射，产生更自然的高度变化
+// 非常平坦的高度分布
 func (tg *TerrainGenerator) getHeight(value float64, terrainType string) int {
 	switch terrainType {
 	case TerrainWater:
-		// 水底有轻微起伏，从 -2 到 -1（显示为 0）
-		return -2 + int((value+1)*0.5)
+		return -1
 	case TerrainSand:
-		// 沙滩从 0 开始，逐渐上升到 1
-		normalized := (value + 0.35) / 0.2 // 归一化到 0-1
-		return int(normalized * 1.5)
+		return 0
 	case TerrainGrass, TerrainFarmland:
-		// 草地/农田高度 1-3，基于噪声值平滑过渡
-		// value 范围大约是 -0.15 到 0.5
-		normalized := (value + 0.15) / 0.65 // 归一化到 0-1
-		height := 1 + int(normalized*2.5)   // 1 到 3
-		if height < 1 {
-			height = 1
-		}
-		if height > 3 {
-			height = 3
-		}
-		return height
+		return 1 // 固定高度1
 	case TerrainHill:
-		// 山丘 3-5，随噪声值增加
-		normalized := (value - 0.5) / 0.5 // 归一化到 0-1
-		height := 3 + int(normalized*3)   // 3 到 5
-		if height < 3 {
-			height = 3
-		}
-		if height > 5 {
-			height = 5
-		}
-		return height
+		return 2 // 山丘也降低
 	default:
 		return 1
 	}
@@ -142,7 +143,6 @@ func (tg *TerrainGenerator) getHeight(value float64, terrainType string) int {
 // ModifyBlock 修改地块（用于挖掘/填海等）
 func (tg *TerrainGenerator) ModifyBlock(block *Block, newType string) {
 	block.TerrainType = newType
-	// 根据新类型重新计算高度
 	block.Height = tg.getHeightForType(newType)
 	block.Z = block.Height
 }
@@ -150,13 +150,15 @@ func (tg *TerrainGenerator) ModifyBlock(block *Block, newType string) {
 // getHeightForType 获取地形类型的默认高度
 func (tg *TerrainGenerator) getHeightForType(terrainType string) int {
 	switch terrainType {
-	case TerrainWater, TerrainSand:
+	case TerrainWater:
+		return -1
+	case TerrainSand:
 		return 0
 	case TerrainGrass, TerrainFarmland:
 		return 1
 	case TerrainHill:
 		return 2
 	default:
-		return 0
+		return 1
 	}
 }

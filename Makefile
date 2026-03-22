@@ -1,4 +1,6 @@
-.PHONY: build server cli web run stop clean test help
+SHELL := /bin/bash -lc
+
+.PHONY: build server cli web debug-server run stop clean test help
 
 # =============================================================================
 # Build
@@ -28,6 +30,13 @@ web:
 	@cd godot-web && godot4 --headless --export-release "Web" ../server/cmd/server/web/index.html
 	@echo "✓ Web exported"
 
+# Build debug server
+debug-server:
+	@mkdir -p bin
+	@echo "→ Building debug server..."
+	@cd .agents/skills/godot-web-debug/server && /usr/local/go/bin/go build -o ../../../../bin/debug-server .
+	@echo "✓ bin/debug-server"
+
 # =============================================================================
 # Run
 # =============================================================================
@@ -43,7 +52,19 @@ run: server
 
 stop:
 	@-pkill -f "bin/server" 2>/dev/null || true
+	@-pkill -f "bin/debug-server" 2>/dev/null || true
 	@echo "✓ Server stopped"
+
+# Run debug server only
+debug-server-run: debug-server
+	@echo "→ Starting debug server on :8081..."
+	@./bin/debug-server > /tmp/debug-server.log 2>&1 &
+	@sleep 1
+	@echo "✓ Debug server running at http://localhost:8081"
+
+# Full debug workflow (uses PID files to manage only our processes)
+debug: debug-server server
+	@./scripts/debug-start.sh
 
 # =============================================================================
 # Utils
@@ -51,6 +72,7 @@ stop:
 
 clean:
 	@rm -rf bin/ server/cmd/server/web/
+	@rm -f .agents/skills/godot-web-debug/server/go.sum
 	@echo "✓ Cleaned"
 
 test:
@@ -60,19 +82,23 @@ help:
 	@echo "Agent Town - Build Commands"
 	@echo ""
 	@echo "Build:"
-	@echo "  make build    # Build everything (server + cli + web)"
-	@echo "  make server   # Build server binary only"
-	@echo "  make cli      # Build CLI binary only"
-	@echo "  make web      # Export web frontend only (requires godot4)"
+	@echo "  make build         # Build everything (server + cli + web)"
+	@echo "  make server        # Build server binary only"
+	@echo "  make cli           # Build CLI binary only"
+	@echo "  make web           # Export web frontend only (requires godot4)"
+	@echo "  make debug-server  # Build debug server for godot-web"
 	@echo ""
 	@echo "Run:"
-	@echo "  make run      # Build and start server"
-	@echo "  make stop     # Stop server"
+	@echo "  make run           # Build and start server"
+	@echo "  make stop          # Stop server"
+	@echo "  make debug-server-run  # Run debug server only"
+	@echo "  make debug         # Full debug environment (servers + browser)"
+	@echo "  ./scripts/debug-stop.sh  # Stop debug environment"
 	@echo ""
 	@echo "Utils:"
-	@echo "  make clean    # Clean build artifacts"
-	@echo "  make test     # Run tests"
-	@echo "  make help     # Show this help"
+	@echo "  make clean         # Clean build artifacts"
+	@echo "  make test          # Run tests"
+	@echo "  make help          # Show this help"
 	@echo ""
 	@echo "Setup:    ./scripts/setup.sh"
 	@echo "Monitor:  ./scripts/dev.sh {status|logs|test|env}"

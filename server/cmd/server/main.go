@@ -68,6 +68,11 @@ type BuildingView struct {
 	Height   int      `json:"height"`
 }
 
+type RoadView struct {
+	X int `json:"x"`
+	Y int `json:"y"`
+}
+
 type VisibleArea struct {
 	AgentID   string         `json:"agentId"`
 	Center    Position       `json:"center"`
@@ -332,12 +337,22 @@ func getWorldMap(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// Get roads within chunk bounds
+	roads := []RoadView{}
+	for _, r := range wld.InitialRoads {
+		if r.X >= minWorldX && r.X < maxWorldX &&
+		   r.Y >= minWorldY && r.Y < maxWorldY {
+			roads = append(roads, RoadView{X: r.X, Y: r.Y})
+		}
+	}
+
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"centerChunk": Position{X: cx, Y: cy, Z: 0},
 		"chunkRadius": cr,
 		"chunks":      chunks,
 		"agents":      agents,
 		"buildings":   buildings,
+		"roads":       roads,
 	})
 }
 

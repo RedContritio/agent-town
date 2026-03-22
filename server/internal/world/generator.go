@@ -110,11 +110,12 @@ func (wg *WorldGenerator) GenerateInitialWorld() (*World, error) {
 	
 	// 5. 生成调试 NPC（在建筑附近）
 	spawnPoints := []Position{
-		{X: -10, Y: -10}, // 市政厅附近
-		{X: 10, Y: -10},  // 银行附近
-		{X: -10, Y: 10},  // 任务中心附近
-		{X: 10, Y: 10},   // 商店附近
-		{X: 0, Y: 0},     // 中心
+		{X: -9, Y: -9},  // 政府大厅附近
+		{X: 9, Y: -9},   // 引导大厅附近
+		{X: -9, Y: 9},   // 委托处附近
+		{X: 9, Y: 9},    // 商店附近
+		{X: 0, Y: 0},    // 中心
+		{X: -5, Y: 0},   // 额外NPC
 	}
 	world.InitialAgents = wg.agents.GenerateDebugNPCs(spawnPoints, 6)
 	

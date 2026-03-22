@@ -5,6 +5,7 @@
 [ext_resource type="Script" path="res://scripts/camera_controller.gd" id="3_camera"]
 [ext_resource type="PackedScene" uid="uid://hud_scene" path="res://scenes/ui/hud.tscn" id="4_hud"]
 [ext_resource type="Script" path="res://scripts/name_label_manager.gd" id="5_name_labels"]
+[ext_resource type="Script" path="res://scripts/debug_controller.gd" id="6_debug_ctrl"]
 [ext_resource type="PackedScene" uid="uid://agentpanel001" path="res://scenes/ui/agent_panel.tscn" id="6_agent_panel"]
 [ext_resource type="PackedScene" uid="uid://loginpanel001" path="res://scenes/ui/login_panel.tscn" id="7_login_panel"]
 
@@ -89,3 +90,6 @@ grow_vertical = 0
 
 [node name="NameLabels" type="CanvasLayer" parent="."]
 script = ExtResource("5_name_labels")
+
+[node name="DebugController" type="Node" parent="."]
+script = ExtResource("6_debug_ctrl")
