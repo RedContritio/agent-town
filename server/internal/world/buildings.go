@@ -24,14 +24,15 @@ var BuildingColors = map[string]string{
 
 // Building 建筑
 type Building struct {
-	ID      string   `json:"id"`
-	Name    string   `json:"name"`
-	Type    string   `json:"type"`
-	OwnerID string   `json:"ownerId"`
-	Anchor  Position `json:"anchor"`
-	Width   int      `json:"width"`
-	Depth   int      `json:"depth"`
-	Height  int      `json:"height"`
+	ID          string   `json:"id"`
+	Name        string   `json:"name"`
+	DisplayName string   `json:"displayName"`
+	Type        string   `json:"type"`
+	OwnerID     string   `json:"ownerId"`
+	Anchor      Position `json:"anchor"`
+	Width       int      `json:"width"`
+	Depth       int      `json:"depth"`
+	Height      int      `json:"height"`
 }
 
 // Position 坐标
@@ -60,14 +61,15 @@ func NewBuildingGenerator(seed int64) *BuildingGenerator {
 func (bg *BuildingGenerator) GenerateInitialBuildings() []Building {
 	buildings := []Building{
 		{
-			ID:      "building-gov-hall",
-			Name:    "政府大厅",
-			Type:    BuildingGovHall,
-			OwnerID: "government",
-			Anchor:  Position{X: -12, Y: -12, Z: 0},
-			Width:   2,
-			Depth:   2,
-			Height:  3,
+			ID:          "building-gov-hall",
+			Name:        "政府大厅",
+			DisplayName: "廉政楼",
+			Type:        BuildingGovHall,
+			OwnerID:     "government",
+			Anchor:      Position{X: -12, Y: -12, Z: 0},
+			Width:       2,
+			Depth:       2,
+			Height:      3,
 		},
 		{
 			ID:      "building-guide-hall",

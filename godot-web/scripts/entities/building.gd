@@ -42,7 +42,10 @@ func setup(data: Dictionary):
 
 func setup_with_height(data: Dictionary, ground_height: float):
 	building_id = data.get("id", "")
-	building_name = data.get("name", "Building")
+	building_name = data.get("displayName", "")
+	# 如果没有 displayName，回退到 name
+	if building_name.is_empty():
+		building_name = data.get("name", "Building")
 	building_type = data.get("type", "house")
 	
 	var pos = data.get("anchor", {})

@@ -58,14 +58,15 @@ type ChunkView struct {
 }
 
 type BuildingView struct {
-	ID       string   `json:"id"`
-	Name     string   `json:"name"`
-	Type     string   `json:"type"`
-	OwnerID  string   `json:"ownerId"`
-	Anchor   Position `json:"anchor"`
-	Width    int      `json:"width"`
-	Depth    int      `json:"depth"`
-	Height   int      `json:"height"`
+	ID          string   `json:"id"`
+	Name        string   `json:"name"`
+	DisplayName string   `json:"displayName"`
+	Type        string   `json:"type"`
+	OwnerID     string   `json:"ownerId"`
+	Anchor      Position `json:"anchor"`
+	Width       int      `json:"width"`
+	Depth       int      `json:"depth"`
+	Height      int      `json:"height"`
 }
 
 type RoadView struct {
@@ -148,14 +149,15 @@ func convertAgent(agent world.Agent) AgentView {
 
 func convertBuilding(building world.Building) BuildingView {
 	return BuildingView{
-		ID:      building.ID,
-		Name:    building.Name,
-		Type:    building.Type,
-		OwnerID: building.OwnerID,
-		Anchor:  Position{X: building.Anchor.X, Y: building.Anchor.Y, Z: building.Anchor.Z},
-		Width:   building.Width,
-		Depth:   building.Depth,
-		Height:  building.Height,
+		ID:          building.ID,
+		Name:        building.Name,
+		DisplayName: building.DisplayName,
+		Type:        building.Type,
+		OwnerID:     building.OwnerID,
+		Anchor:      Position{X: building.Anchor.X, Y: building.Anchor.Y, Z: building.Anchor.Z},
+		Width:       building.Width,
+		Depth:       building.Depth,
+		Height:      building.Height,
 	}
 }
 
