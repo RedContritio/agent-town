@@ -57,29 +57,38 @@ func setup(data: Dictionary):
 	_mesh.name = "Mesh"
 	add_child(_mesh)
 	
-	_mesh.mesh = BoxMesh.new()
-	_mesh.mesh.size = Vector3(width, height, depth)
-	_mesh.position.y = height / 2
-	
-	var color = TYPE_COLORS.get(building_type, TYPE_COLORS["house"])
-	var material = StandardMaterial3D.new()
-	material.albedo_color = color
-	_mesh.material_override = material
-	
-	# Create roof
-	_roof = MeshInstance3D.new()
-	_roof.name = "Roof"
-	add_child(_roof)
-	
-	_roof.mesh = PrismMesh.new()
-	_roof.mesh.size = Vector3(width * 0.8, height * 0.5, depth * 0.8)
-	_roof.position.y = height + height * 0.25
-	_roof.rotation.y = PI / 4
-	
-	var roof_color = TYPE_COLORS.get(building_type, TYPE_COLORS["house"])
-	var roof_material = StandardMaterial3D.new()
-	roof_material.albedo_color = roof_color.darkened(0.1)
-	_roof.material_override = roof_material
+	# 尝试加载生成的模型
+	var model_path = "res://assets/models_generated/%s.tres" % building_type
+	if ResourceLoader.exists(model_path):
+		# 使用生成的纪念碑谷风格模型
+		_mesh.mesh = load(model_path)
+		# 生成的模型原点在底部中心，位置已正确
+		_mesh.position = Vector3.ZERO
+	else:
+		# 回退到默认方块
+		_mesh.mesh = BoxMesh.new()
+		_mesh.mesh.size = Vector3(width, height, depth)
+		_mesh.position.y = height / 2
+		
+		var color = TYPE_COLORS.get(building_type, TYPE_COLORS["house"])
+		var material = StandardMaterial3D.new()
+		material.albedo_color = color
+		_mesh.material_override = material
+		
+		# 只有回退模式才创建简单屋顶
+		_roof = MeshInstance3D.new()
+		_roof.name = "Roof"
+		add_child(_roof)
+		
+		_roof.mesh = PrismMesh.new()
+		_roof.mesh.size = Vector3(width * 0.8, height * 0.5, depth * 0.8)
+		_roof.position.y = height + height * 0.25
+		_roof.rotation.y = PI / 4
+		
+		var roof_color = TYPE_COLORS.get(building_type, TYPE_COLORS["house"])
+		var roof_material = StandardMaterial3D.new()
+		roof_material.albedo_color = roof_color.darkened(0.1)
+		_roof.material_override = roof_material
 	
 	# Create Label3D
 	_create_label(height)
@@ -156,7 +165,12 @@ func _create_triangle_mesh() -> ArrayMesh:
 func get_height() -> float:
 	# Return building height from mesh size
 	if _mesh and _mesh.mesh:
-		return _mesh.mesh.size.y
+		# 对于 ArrayMesh，我们无法直接获取 size，使用默认值或根据类型返回
+		if _mesh.mesh is BoxMesh:
+			return _mesh.mesh.size.y
+		else:
+			# 对于生成的模型，返回默认高度或从 mesh AABB 计算
+			return 3.0
 	return 3.0  # Default height
 
 static func set_debug_markers_enabled(enabled: bool):
