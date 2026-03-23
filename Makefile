@@ -62,9 +62,19 @@ debug-server-run: debug-server
 	@sleep 1
 	@echo "✓ Debug server running at http://localhost:8081"
 
-# Full debug workflow (uses PID files to manage only our processes)
+# Start Godot directly (no web export needed)
+godot-run:
+	@echo "→ Starting Godot..."
+	@cd godot-web && godot4 . &
+	@echo "✓ Godot started"
+
+# Full debug workflow (Godot native mode, no web export)
 debug: debug-server server
-	@./scripts/debug-start.sh
+	@.agents/skills/godot-web-debug/bin/debug-start.sh
+
+# Stop debug environment
+debug-stop:
+	@.agents/skills/godot-web-debug/bin/debug-stop.sh
 
 # =============================================================================
 # Utils
@@ -91,9 +101,9 @@ help:
 	@echo "Run:"
 	@echo "  make run           # Build and start server"
 	@echo "  make stop          # Stop server"
-	@echo "  make debug-server-run  # Run debug server only"
-	@echo "  make debug         # Full debug environment (servers + browser)"
-	@echo "  ./scripts/debug-stop.sh  # Stop debug environment"
+	@echo "  make godot-run     # Start Godot only (manual debugging)"
+	@echo "  make debug         # Full debug environment (servers + Godot)"
+	@echo "  make debug-stop    # Stop debug environment"
 	@echo ""
 	@echo "Utils:"
 	@echo "  make clean         # Clean build artifacts"

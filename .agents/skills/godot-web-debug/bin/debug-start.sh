@@ -1,6 +1,6 @@
 #!/bin/bash
-# Debug Environment Startup Script
-# 只管理自己创建的进程，不影响其他服务
+# Debug Environment Startup Script (Godot Native Mode)
+# 启动 Godot 编辑器/运行时直接连接调试，无需 Web 导出
 
 set -e
 
@@ -13,6 +13,7 @@ mkdir -p $PID_DIR
 
 echo "========================================"
 echo "  Agent Town Debug Environment"
+echo "  (Godot Native Mode)"
 echo "========================================"
 echo ""
 
@@ -27,6 +28,8 @@ for pidfile in $PID_DIR/*.pid; do
         fi
     fi
 done
+# 同时检查并停止可能残留的 godot 进程
+pkill -f "godot4.*godot-web" 2>/dev/null || true
 sleep 2
 echo "✓ Cleaned"
 echo ""
@@ -35,7 +38,7 @@ echo ""
 echo "→ Starting debug server..."
 if [ ! -f "$PROJECT_ROOT/bin/debug-server" ]; then
     echo "→ Building debug server..."
-    cd "$SKILL_DIR/server"
+    cd "$PROJECT_ROOT/.agents/skills/godot-web-debug/server"
     /usr/local/go/bin/go build -o "$PROJECT_ROOT/bin/debug-server" .
 fi
 "$PROJECT_ROOT/bin/debug-server" > /tmp/debug-server.log 2>&1 &
@@ -73,31 +76,33 @@ else
 fi
 echo ""
 
-# 启动浏览器
-echo "→ Launching browser..."
-python3 "$SCRIPT_DIR/launch-browser.py" > /tmp/browser.log 2>&1 &
-echo $! > $PID_DIR/browser.pid
+# 启动 Godot
+echo "→ Starting Godot..."
+cd "$PROJECT_ROOT/godot-web"
+godot4 . > /tmp/godot.log 2>&1 &
+echo $! > $PID_DIR/godot.pid
 
-echo "✓ Browser launched"
+echo "✓ Godot started"
 echo ""
 echo "========================================"
-echo "  Waiting for godot-web to connect..."
+echo "  Waiting for Godot to connect..."
 echo "========================================"
 
 # 等待 godot 连接
 for i in {1..30}; do
     if curl -s http://localhost:8081/health | grep -q '"godot_ready":true'; then
         echo ""
-        echo "✓ Godot-web is ready!"
+        echo "✓ Godot is ready!"
         echo ""
         echo "========================================"
         echo "  Debug Environment Ready!"
         echo "========================================"
         echo ""
         echo "Commands:"
-        echo "  $SCRIPT_DIR/client.sh info"
-        echo "  $SCRIPT_DIR/client.sh preset top"
-        echo "  $SCRIPT_DIR/client.sh capture"
+        echo "  $SCRIPT_DIR/client.sh info                    # 获取相机信息"
+        echo "  $SCRIPT_DIR/client.sh preset top              # 设置预设视角"
+        echo "  $SCRIPT_DIR/client.sh direct -X -12 -Y 3 -Z -20 -x -12 -y 1.5 -z -12  # 平视视角"
+        echo "  $SCRIPT_DIR/client.sh capture                 # 截图"
         echo ""
         echo "Stop with: $SCRIPT_DIR/debug-stop.sh"
         echo ""
@@ -107,7 +112,7 @@ for i in {1..30}; do
 done
 
 echo ""
-echo "✗ Timeout waiting for godot-web"
-echo "Check browser log: /tmp/browser.log"
-echo "Check server log: /tmp/debug-server.log"
+echo "✗ Timeout waiting for Godot"
+echo "Check Godot log: /tmp/godot.log"
+echo "Check debug server log: /tmp/debug-server.log"
 exit 1

@@ -9,16 +9,17 @@ class_name CameraController
 
 @export var min_distance: float = 5.0     # 最小距离(米)
 @export var max_distance: float = 150.0   # 最大距离(米)，允许更远视角
-@export var min_height: float = 2.5       # 相机最低高度(米)，高于地面方块
+# 注意: 相机碰撞由 Godot 物理系统处理，不再硬性限制高度
+# 如需硬性限制，可设置此值 > 0
+@export var min_height: float = 0.0       # 相机最低高度(米)，0 = 无限制
 @export var zoom_speed: float = 0.1       # 缩放速度
 @export var rotate_speed: float = 0.005   # 旋转速度
 @export var pan_speed: float = 0.015      # 平移速度
 
 # 极角限制（弧度）
-# 0° = 正上方（会导致视角奇点，禁止）
-# 5° = 接近俯视（允许的最小角度）
+# 0° = 正上方（允许，但需特殊处理 UP 向量）
 # 90° = 水平面（地平线，不能再低）
-@export var min_polar: float = deg_to_rad(5.0)     # 最垂直（接近俯视但不完全）
+@export var min_polar: float = deg_to_rad(0.1)     # 允许接近完全俯视
 @export var max_polar: float = deg_to_rad(90.0)    # 最水平（地平线，不允许仰视）
 
 var target_position: Vector3 = Vector3(0, 1.5, 0)  # 目标点高度1.5米
@@ -99,10 +100,9 @@ func update_camera_position():
 	var y = target_position.y + distance * cos_polar
 	var z = target_position.z + distance * sin_polar * sin_azimuth
 	
-	# 强制最低高度，确保相机不低于地面
-	if y < min_height:
+	# 可选: 强制最低高度检查
+	if min_height > 0 and y < min_height:
 		# 调整距离或极角来满足高度要求
-		# 保持水平方向不变，只调整垂直
 		var required_cos = (min_height - target_position.y) / distance
 		required_cos = clamp(required_cos, cos(max_polar), cos(min_polar))
 		polar = acos(required_cos)
@@ -116,9 +116,13 @@ func update_camera_position():
 	
 	position = Vector3(x, y, z)
 	
-	# 统一使用 UP 向量，避免 polar 跨越 PI/2 时的突变
-	# 使用 quaternion 避免万向节锁
-	look_at(target_position, Vector3.UP)
+	# 处理接近正上方的情况（polar 接近 0 时）
+	# 当视线接近垂直时，使用 FORWARD 作为 UP 参考避免不稳定
+	var up = Vector3.UP
+	if polar < 0.01:  # 约 0.57°
+		up = Vector3.FORWARD
+	
+	look_at(target_position, up)
 
 func focus_on_position(pos: Vector3):
 	target_position = Vector3(pos.x, 1.5, pos.z)

@@ -28,8 +28,15 @@ func _process(_delta):
 		# Get stable node position in world space (ignoring any visual animation)
 		var base_position = node.global_position
 		
-		# Add height offset for label (above the entity)
-		var label_height_offset = 0.7
+		# Add dynamic height offset for label (above the entity)
+		var label_height_offset: float
+		if node.has_method("get_height"):
+			# Entity provides its own height (Agent: 1.8m, Building: varies)
+			label_height_offset = node.get_height() + 0.5
+		else:
+			# Default offset for entities without height info
+			label_height_offset = 0.7
+		
 		var world_pos = base_position + Vector3(0, label_height_offset, 0)
 		
 		# Calculate distance from camera to node
@@ -40,9 +47,12 @@ func _process(_delta):
 			label.visible = false
 			continue
 		
-		# Calculate font size based on distance (perspective scaling)
-		# Closer = larger, Farther = smaller
-		var scale_factor = REFERENCE_DISTANCE / distance
+		# Calculate font size based on distance (smooth scaling)
+		# Use sigmoid-like curve for smoother perception
+		var normalized_dist = distance / REFERENCE_DISTANCE
+		# Smooth decay: 1.0 at reference distance, ~0.3 at 3x distance, ~0.7 at 0.5x distance
+		var scale_factor = clamp(1.0 / (1.0 + normalized_dist * 0.3), 0.4, 2.0)
+		
 		var target_font_size = int(BASE_FONT_SIZE * scale_factor)
 		
 		# Clamp to min/max size

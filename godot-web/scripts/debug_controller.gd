@@ -12,9 +12,10 @@ var _message_queue: Array = []
 var _log_file: FileAccess = null
 
 # 预设配置
+# 注意: polar 不能为 90°，否则会触发 min_height 限制
 var _presets = {
 	"top": {"distance": 30.0, "azimuth": 0.0, "polar": 10.0},
-	"side": {"distance": 25.0, "azimuth": 0.0, "polar": 90.0},
+	"side": {"distance": 25.0, "azimuth": 0.0, "polar": 85.0},
 	"north": {"distance": 15.0, "azimuth": -90.0, "polar": 85.0},
 	"south": {"distance": 15.0, "azimuth": 90.0, "polar": 85.0},
 	"east": {"distance": 15.0, "azimuth": 180.0, "polar": 85.0},
@@ -25,32 +26,34 @@ func _ready():
 	if not enabled:
 		return
 	
-	# 延迟初始化，等待相机准备好
-	var timer = get_tree().create_timer(1.0)
-	timer.timeout.connect(_initialize)
-
-func _initialize():
-	print(" Initializing...")
-	
-	# 延迟查找相机
-	var timer = get_tree().create_timer(3.0)
-	timer.timeout.connect(_find_camera)
-	
-	# 同时连接 WebSocket
+	print("[DebugController] Initializing...")
+	# 先连接 WebSocket，然后查找相机
 	_connect_to_server()
+	# 延迟查找相机（给场景时间初始化）
+	var timer = get_tree().create_timer(0.5)
+	timer.timeout.connect(_find_camera)
 
 func _find_camera():
+	# 首先尝试获取当前相机
 	var camera = get_viewport().get_camera_3d()
 	if camera:
 		camera_controller = camera
 		if camera_controller.has_method("update_camera_position"):
-			print(" Camera controller found, sending ready")
-			_send_ready()
+			print("[DebugController] Camera controller found")
+			_try_send_ready()
 			return
 	
-	print(" Camera not ready, retrying...")
-	var timer = get_tree().create_timer(2.0)
+	print("[DebugController] Camera not ready, retrying...")
+	var timer = get_tree().create_timer(1.0)
 	timer.timeout.connect(_find_camera)
+
+func _try_send_ready():
+	# 只有当连接和相机都准备好时才发送 ready
+	if _connected and camera_controller:
+		print("[DebugController] Sending ready message")
+		_send_ready()
+	else:
+		print("[DebugController] Cannot send ready: connected=", _connected, ", camera=", camera_controller != null)
 
 func _send_ready():
 	_send_message({
@@ -66,22 +69,27 @@ func _send_ready():
 	})
 
 func _connect_to_server():
+	# 如果已有 socket，先清理
+	if socket != null:
+		socket.close()
+		socket = null
+	
 	socket = WebSocketPeer.new()
 	var err = socket.connect_to_url(server_url)
 	if err != OK:
-		print(" Failed to connect to server: " + str(err))
+		print("[DebugController] Failed to connect to server: " + str(err))
 		# 重试
 		var timer = get_tree().create_timer(3.0)
 		timer.timeout.connect(_connect_to_server)
 		return
-	print(" Connecting to " + server_url)
+	print("[DebugController] Connecting to " + server_url)
 
 func _process(delta):
 	if socket:
 		_socket_poll()
 		
 		# 检查是否有待处理的消息（调试用）
-		if _connected and socket.get_available_packets() > 0:
+		if _connected and socket.get_available_packet_count() > 0:
 			print(" Has packets available")
 
 func _socket_poll():
@@ -96,14 +104,15 @@ func _socket_poll():
 		WebSocketPeer.STATE_OPEN:
 			if not _connected:
 				_connected = true
-				print(" Connected to debug server")
+				print("[DebugController] Connected to debug server")
 				_flush_message_queue()
+				# 连接成功后，如果相机已准备好则发送 ready
+				_try_send_ready()
 			
 			# 接收消息
-			while socket.get_available_packets() > 0:
+			while socket.get_available_packet_count() > 0:
 				var packet = socket.get_packet()
 				var text = packet.get_string_from_utf8()
-				print(" RAW PACKET: " + text)
 				_handle_message(text)
 			
 		WebSocketPeer.STATE_CLOSING:
@@ -112,15 +121,19 @@ func _socket_poll():
 		WebSocketPeer.STATE_CLOSED:
 			if _connected:
 				_connected = false
-				print(" Disconnected from server, reconnecting...")
-				var timer = get_tree().create_timer(3.0)
+				print("[DebugController] Disconnected from server")
+			# 无论之前是否连接，都尝试重连
+			if socket != null:
+				socket = null
+				print("[DebugController] Will reconnect in 2s...")
+				var timer = get_tree().create_timer(2.0)
 				timer.timeout.connect(_connect_to_server)
 
 func _handle_message(text: String):
 	var json = JSON.new()
 	var err = json.parse(text)
 	if err != OK:
-		print(" JSON parse error: ", json.get_error_message())
+		print("[DebugController] JSON parse error: ", json.get_error_message())
 		return
 	
 	var msg = json.get_data()
@@ -130,30 +143,29 @@ func _handle_message(text: String):
 	var msg_type = msg.get("type", "")
 	var payload = msg.get("payload", {})
 	
-	print(" Received: ", msg_type)
+	print("[DebugController] Received: ", msg_type)
 	
 	match msg_type:
 		"set_camera":
-			print(" Handling set_camera")
 			_apply_camera_command(payload)
 			
+		"set_camera_direct":
+			_apply_camera_direct_command(payload)
+			
 		"set_preset":
-			print(" Handling set_preset")
 			_apply_preset_command(payload.get("preset", ""))
 			
 		"capture_screenshot":
-			print(" Handling capture_screenshot")
 			_capture_screenshot(payload)
 			
 		"get_camera_info":
-			print(" Handling get_camera_info")
 			_send_camera_info()
 			
 		"connected":
-			print(" Server acknowledged connection")
+			print("[DebugController] Server acknowledged connection")
 		
 		_:
-			print(" Unknown message type: ", msg_type)
+			print("[DebugController] Unknown message type: ", msg_type)
 
 func _apply_camera_command(payload):
 	if not camera_controller:
@@ -165,16 +177,43 @@ func _apply_camera_command(payload):
 	var azimuth = payload.get("azimuth", -45.0)
 	var polar = payload.get("polar", 60.0)
 	
+	print("[DebugController] Setting camera: target=", target, " distance=", distance, 
+		" azimuth=", azimuth, " polar=", polar)
+	
 	camera_controller.target_position = Vector3(target[0], target[1], target[2])
 	camera_controller.distance = distance
 	camera_controller.azimuth = deg_to_rad(azimuth)
 	camera_controller.polar = deg_to_rad(polar)
 	camera_controller.update_camera_position()
 	
-	print(" Camera set: target=", target, " distance=", distance, 
-		" azimuth=", azimuth, " polar=", polar)
+	# 获取实际设置的值（可能被 camera_controller 调整）
+	var info = camera_controller.get_camera_info()
+	print("[DebugController] Camera updated: target=", info.target, 
+		" distance=", info.distance, " polar=", info.polar_deg)
 	
 	_send_ack("set_camera")
+
+func _apply_camera_direct_command(payload):
+	# 直接设置相机位置，绕过轨道控制器限制（用于平视视角）
+	var camera = get_viewport().get_camera_3d()
+	if not camera:
+		_send_error("camera_not_found")
+		return
+	
+	var position_arr = payload.get("position", [0, 3, 0])
+	var look_at_arr = payload.get("look_at", [0, 1.5, 0])
+	
+	var pos = Vector3(position_arr[0], position_arr[1], position_arr[2])
+	var look = Vector3(look_at_arr[0], look_at_arr[1], look_at_arr[2])
+	
+	print("[DebugController] Setting camera directly: position=", pos, " look_at=", look)
+	
+	# 直接设置相机（不通过 camera_controller）
+	camera.global_position = pos
+	camera.look_at(look, Vector3.UP)
+	
+	print("[DebugController] Camera set directly: global_pos=", camera.global_position)
+	_send_ack("set_camera_direct")
 
 func _apply_preset_command(preset_name: String):
 	if not camera_controller:
@@ -182,16 +221,19 @@ func _apply_preset_command(preset_name: String):
 		return
 	
 	if not _presets.has(preset_name):
-		_send_error("unknown_preset")
+		_send_error("unknown_preset: " + preset_name)
 		return
 	
 	var p = _presets[preset_name]
+	print("[DebugController] Applying preset '", preset_name, "': ", p)
+	
 	camera_controller.distance = p["distance"]
 	camera_controller.azimuth = deg_to_rad(p["azimuth"])
 	camera_controller.polar = deg_to_rad(p["polar"])
 	camera_controller.update_camera_position()
 	
-	print(" Preset applied: ", preset_name)
+	var info = camera_controller.get_camera_info()
+	print("[DebugController] Preset applied, current polar=", info.polar_deg)
 	_send_ack("set_preset")
 
 func _capture_screenshot(payload):
@@ -264,19 +306,34 @@ func _send_error(error_msg: String):
 
 func _send_message(data: Dictionary):
 	var json_str = JSON.stringify(data)
-	print(" Sending: ", json_str)
+	print("[DebugController] Sending: ", json_str)
 	
-	if _connected and socket:
+	if _connected and socket and socket.get_ready_state() == WebSocketPeer.STATE_OPEN:
 		var err = socket.send_text(json_str)
 		if err != OK:
-			print(" Send error: ", err)
+			print("[DebugController] Send error: ", err)
+			# 发送失败，加入队列稍后重试
+			_message_queue.append(json_str)
 		else:
-			print(" Sent successfully")
+			print("[DebugController] Sent successfully")
 	else:
-		print(" Not connected, queuing message")
+		print("[DebugController] Not connected, queuing message")
 		_message_queue.append(json_str)
 
 func _flush_message_queue():
+	print("[DebugController] Flushing message queue, size=", _message_queue.size())
 	while _message_queue.size() > 0:
 		var msg = _message_queue.pop_front()
-		socket.send_text(msg)
+		if socket and socket.get_ready_state() == WebSocketPeer.STATE_OPEN:
+			var err = socket.send_text(msg)
+			if err != OK:
+				print("[DebugController] Failed to flush message: ", err)
+				# 重新放回队列头部，稍后重试
+				_message_queue.push_front(msg)
+				break
+			else:
+				print("[DebugController] Flushed message: ", msg.left(80))
+		else:
+			print("[DebugController] Socket not ready, cannot flush")
+			_message_queue.push_front(msg)
+			break

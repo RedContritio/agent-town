@@ -107,3 +107,7 @@ func update_data(data: Dictionary):
 	)
 	# Smooth movement could be added here
 	position = target_position
+
+func get_height() -> float:
+	# Agent height is approximately 1.8 meters (collision box height)
+	return 1.8

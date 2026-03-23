@@ -92,18 +92,8 @@ func _create_label(building_height: float):
 	_label.name = "NameLabel"
 	add_child(_label)
 	
-	# Use English fallback for visibility testing
-	var display_name = building_name
-	if display_name == "政府大厅":
-		display_name = "Gov Hall"
-	elif display_name == "引导大厅":
-		display_name = "Guide Hall"
-	elif display_name == "委托处":
-		display_name = "Quest"
-	elif display_name == "商店":
-		display_name = "Shop"
-	
-	_label.text = display_name
+	# 直接使用建筑名称（支持中文）
+	_label.text = building_name
 	_label.position = Vector3(0, building_height + 2.0, 0)
 	_label.modulate = Color(0.2, 0.9, 1.0, 1.0)
 	_label.font_size = 72
@@ -162,6 +152,12 @@ func _create_triangle_mesh() -> ArrayMesh:
 	
 	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
 	return mesh
+
+func get_height() -> float:
+	# Return building height from mesh size
+	if _mesh and _mesh.mesh:
+		return _mesh.mesh.size.y
+	return 3.0  # Default height
 
 static func set_debug_markers_enabled(enabled: bool):
 	DEBUG_SHOW_MARKERS = enabled

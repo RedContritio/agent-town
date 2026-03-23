@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Launch browser for debug environment"""
+"""Launch browser for debug environment (可选 - 用于 Web 导出模式测试)"""
 
 from playwright.sync_api import sync_playwright
 import time
@@ -21,9 +21,9 @@ def main():
         page.on("pageerror", handle_page_error)
         
         page.goto('http://localhost:8080', wait_until='networkidle')
-        print('[LAUNCHER] Browser launched. Waiting for godot-web to initialize...', flush=True)
+        print('[LAUNCHER] Browser launched. Waiting for Godot Web to initialize...', flush=True)
         page.wait_for_timeout(15000)  # 15秒，保持事件循环运行
-        print('[LAUNCHER] Godot-web should be ready now.', flush=True)
+        print('[LAUNCHER] Godot Web should be ready now.', flush=True)
         print('[LAUNCHER] Browser will stay open. Press Ctrl+C to close.', flush=True)
         try:
             while True:

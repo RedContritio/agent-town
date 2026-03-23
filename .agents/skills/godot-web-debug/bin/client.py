@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Debug Client - 连接 debug_server 控制 godot-web 相机并截图
+Debug Client - 通过 HTTP API 控制 Godot 相机并截图
 
 用法:
     python client.py [命令] [选项]
@@ -28,158 +28,143 @@ Debug Client - 连接 debug_server 控制 godot-web 相机并截图
     python client.py preset --name north && python client.py capture -o north.png
 """
 
-import asyncio
-import websockets
-import json
+import requests
 import argparse
-import base64
+import json
 import sys
+import time
 from pathlib import Path
 
-SERVER_URL = "ws://localhost:8081/client"
+BASE_URL = "http://localhost:8081"
 
 
-async def send_command(ws, msg_type: str, payload: dict = None):
-    """发送命令到 server"""
-    msg = {"type": msg_type}
-    if payload:
-        msg["payload"] = payload
-    await ws.send(json.dumps(msg))
-
-
-async def wait_for_godot_ready(ws, timeout=30):
+def wait_for_godot(timeout=30):
     """等待 godot 就绪"""
-    print("Waiting for godot-web to connect and initialize...")
-    start_time = asyncio.get_event_loop().time()
+    print("Waiting for Godot to connect and initialize...")
+    start_time = time.time()
     
-    while asyncio.get_event_loop().time() - start_time < timeout:
+    while time.time() - start_time < timeout:
         try:
-            response = await asyncio.wait_for(ws.recv(), timeout=1.0)
-            data = json.loads(response)
-            
-            if data.get("type") == "ready":
+            resp = requests.get(f"{BASE_URL}/health", timeout=2)
+            data = resp.json()
+            if data.get("godot_ready"):
                 print("✓ Godot is ready")
                 return True
-            elif data.get("type") == "connected":
-                print("✓ Connected to server")
-            
-        except asyncio.TimeoutError:
-            continue
+        except Exception as e:
+            pass
+        time.sleep(1)
     
+    print("✗ Timeout waiting for godot")
     return False
 
 
-async def wait_for_response(ws, timeout=10):
-    """等待响应"""
-    try:
-        response = await asyncio.wait_for(ws.recv(), timeout=timeout)
-        return json.loads(response)
-    except asyncio.TimeoutError:
-        print("Error: Timeout waiting for response")
-        return None
-
-
-async def cmd_info(args):
+def cmd_info(args):
     """获取相机信息"""
-    async with websockets.connect(SERVER_URL) as ws:
-        # 等待 godot 就绪
-        if not await wait_for_godot_ready(ws):
-            print("Error: Timeout waiting for godot")
-            return
-        
-        await send_command(ws, "get_camera_info")
-        response = await wait_for_response(ws)
-        
-        if response and response.get("type") == "camera_info":
-            info = response["payload"]
-            print(f"Camera Info:")
+    if not wait_for_godot():
+        return
+    
+    try:
+        resp = requests.get(f"{BASE_URL}/api/info", timeout=10)
+        if resp.status_code == 200:
+            info = resp.json()
+            print("Camera Info:")
             print(f"  Target: [{info['target'][0]:.2f}, {info['target'][1]:.2f}, {info['target'][2]:.2f}]")
             print(f"  Distance: {info['distance']:.2f}")
             print(f"  Azimuth: {info['azimuth_deg']:.2f}°")
             print(f"  Polar: {info['polar_deg']:.2f}°")
         else:
-            print(f"Unexpected response: {response}")
+            print(f"Error: {resp.status_code} - {resp.text}")
+    except Exception as e:
+        print(f"Error: {e}")
 
 
-async def cmd_set(args):
+def cmd_set(args):
     """设置相机参数"""
-    async with websockets.connect(SERVER_URL) as ws:
-        # 等待 godot 就绪
-        if not await wait_for_godot_ready(ws):
-            print("Error: Timeout waiting for godot")
-            return
-        
-        payload = {
-            "target": [args.x, args.y, args.z],
-            "distance": args.distance,
-            "azimuth": args.azimuth,
-            "polar": args.polar
-        }
-        
-        await send_command(ws, "set_camera", payload)
-        response = await wait_for_response(ws)
-        
-        if response and response.get("type") == "ack":
-            print(f"Camera set successfully")
-        elif response and response.get("type") == "error":
-            print(f"Error: {response['payload'].get('message')}")
+    if not wait_for_godot():
+        return
+    
+    payload = {
+        "target": [args.x, args.y, args.z],
+        "distance": args.distance,
+        "azimuth": args.azimuth,
+        "polar": args.polar
+    }
+    
+    try:
+        resp = requests.post(f"{BASE_URL}/api/camera", json=payload, timeout=10)
+        if resp.status_code == 200:
+            print("✓ Camera set successfully")
         else:
-            print(f"Unexpected response: {response}")
+            data = resp.json()
+            print(f"Error: {data.get('error', 'unknown')}")
+    except Exception as e:
+        print(f"Error: {e}")
 
 
-async def cmd_preset(args):
+def cmd_direct(args):
+    """直接设置相机位置（绕过轨道控制器，用于平视视角）"""
+    if not wait_for_godot():
+        return
+    
+    payload = {
+        "position": [args.px, args.py, args.pz],
+        "look_at": [args.lx, args.ly, args.lz]
+    }
+    
+    try:
+        resp = requests.post(f"{BASE_URL}/api/camera/direct", json=payload, timeout=10)
+        if resp.status_code == 200:
+            print(f"✓ Camera set directly: position=({args.px}, {args.py}, {args.pz}) -> look_at=({args.lx}, {args.ly}, {args.lz})")
+        else:
+            data = resp.json()
+            print(f"Error: {data.get('error', 'unknown')}")
+    except Exception as e:
+        print(f"Error: {e}")
+
+
+def cmd_preset(args):
     """使用预设视角"""
-    async with websockets.connect(SERVER_URL) as ws:
-        # 等待 godot 就绪
-        if not await wait_for_godot_ready(ws):
-            print("Error: Timeout waiting for godot")
-            return
-        
-        await send_command(ws, "set_preset", {"preset": args.name})
-        response = await wait_for_response(ws)
-        
-        if response and response.get("type") == "ack":
-            print(f"Preset '{args.name}' applied")
-        elif response and response.get("type") == "error":
-            print(f"Error: {response['payload'].get('message')}")
+    if not wait_for_godot():
+        return
+    
+    try:
+        resp = requests.post(f"{BASE_URL}/api/preset", json={"name": args.name}, timeout=10)
+        if resp.status_code == 200:
+            print(f"✓ Preset '{args.name}' applied")
         else:
-            print(f"Unexpected response: {response}")
+            data = resp.json()
+            print(f"Error: {data.get('error', 'unknown')}")
+    except Exception as e:
+        print(f"Error: {e}")
 
 
-async def cmd_capture(args):
-    """截图 - godot-web 保存到 /tmp/ 并返回路径"""
-    async with websockets.connect(SERVER_URL) as ws:
-        # 等待 godot 就绪
-        if not await wait_for_godot_ready(ws):
-            print("Error: Timeout waiting for godot")
-            return
-        
-        payload = {
-            "width": args.width,
-            "height": args.height
-        }
-        
-        await send_command(ws, "capture_screenshot", payload)
-        response = await wait_for_response(ws)
-        
-        if response and response.get("type") == "screenshot":
-            data = response["payload"]
-            filepath = data["filepath"]
-            print(f"Screenshot saved on godot-web: {filepath}")
-            print(f"Size: {data['width']}x{data['height']}")
-            
-            # 如果指定了本地输出路径，提示用户需要手动复制
-            if args.output != "screenshot.png":
-                print(f"Note: File is on godot-web host, not saved locally as {args.output}")
-        elif response and response.get("type") == "error":
-            print(f"Error: {response['payload'].get('message')}")
+def cmd_capture(args):
+    """截图 - 保存到 /tmp/ 并返回路径"""
+    if not wait_for_godot():
+        return
+    
+    payload = {
+        "width": args.width,
+        "height": args.height
+    }
+    
+    try:
+        resp = requests.post(f"{BASE_URL}/api/capture", json=payload, timeout=15)
+        if resp.status_code == 200:
+            data = resp.json()
+            filepath = data.get("filepath", "unknown")
+            print(f"✓ Screenshot saved: {filepath}")
+            print(f"  Size: {data.get('width')}x{data.get('height')}")
         else:
-            print(f"Unexpected response: {response}")
+            data = resp.json()
+            print(f"Error: {data.get('error', 'unknown')}")
+    except Exception as e:
+        print(f"Error: {e}")
 
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Debug Client - 控制 godot-web 相机并截图",
+        description="Debug Client - 控制 Godot 相机并截图",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 示例:
@@ -192,7 +177,10 @@ def main():
   # 使用预设视角
   python client.py preset --name top
 
-  # 截图 (保存到 godot-web 主机的 /tmp/)
+  # 直接设置相机位置（平视视角）
+  python client.py direct --px -12 --py 3 --pz -20 --lx -12 --ly 1.5 --lz -12
+
+  # 截图 (保存到 Godot 主机的 /tmp/)
   python client.py capture
         """
     )
@@ -211,6 +199,15 @@ def main():
     set_parser.add_argument("-a", "--azimuth", type=float, default=-45, help="水平角度 (度)")
     set_parser.add_argument("-p", "--polar", type=float, default=60, help="垂直角度 (度)")
     
+    # direct 命令（直接设置相机位置）
+    direct_parser = subparsers.add_parser("direct", help="直接设置相机位置（用于平视视角）")
+    direct_parser.add_argument("--px", type=float, required=True, help="相机位置 X")
+    direct_parser.add_argument("--py", type=float, required=True, help="相机位置 Y（高度）")
+    direct_parser.add_argument("--pz", type=float, required=True, help="相机位置 Z")
+    direct_parser.add_argument("--lx", type=float, default=0, help="看向位置 X")
+    direct_parser.add_argument("--ly", type=float, default=1.5, help="看向位置 Y（高度）")
+    direct_parser.add_argument("--lz", type=float, default=0, help="看向位置 Z")
+    
     # preset 命令
     preset_parser = subparsers.add_parser("preset", help="使用预设视角")
     preset_parser.add_argument("--name", required=True, 
@@ -218,8 +215,8 @@ def main():
                                help="预设名称")
     
     # capture 命令
-    capture_parser = subparsers.add_parser("capture", help="截图 (保存到 godot-web 主机的 /tmp/)")
-    capture_parser.add_argument("-o", "--output", default="screenshot.png", help="(已废弃) 截图保存在 godot-web 主机")
+    capture_parser = subparsers.add_parser("capture", help="截图 (保存到 /tmp/)")
+    capture_parser.add_argument("-o", "--output", default="screenshot.png", help="(已废弃) 截图保存在 Godot 主机")
     capture_parser.add_argument("-W", "--width", type=int, default=1280, help="宽度")
     capture_parser.add_argument("-H", "--height", type=int, default=720, help="高度")
     
@@ -233,12 +230,13 @@ def main():
     commands = {
         "info": cmd_info,
         "set": cmd_set,
+        "direct": cmd_direct,
         "preset": cmd_preset,
         "capture": cmd_capture,
     }
     
     try:
-        asyncio.run(commands[args.command](args))
+        commands[args.command](args)
     except KeyboardInterrupt:
         print("\nInterrupted")
     except Exception as e:
