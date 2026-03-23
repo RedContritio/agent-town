@@ -3,7 +3,7 @@ extends StaticBody3D
 class_name BuildingEntity
 
 # Debug flag - can be toggled globally to show/hide debug markers
-static var DEBUG_SHOW_MARKERS: bool = true
+static var DEBUG_SHOW_MARKERS: bool = false
 
 var building_id: String
 var building_name: String
@@ -105,7 +105,15 @@ func _create_label(building_height: float):
 	_label.name = "NameLabel"
 	add_child(_label)
 	
-	# 直接使用建筑名称（支持中文）
+	# 加载中文字体（使用 FontFile.load_dynamic_font）
+	var font_path = "res://assets/fonts/NotoSansCJK-Regular.ttc"
+	var font_file = FontFile.new()
+	var err = font_file.load_dynamic_font(font_path)
+	if err == OK:
+		_label.font = font_file
+	else:
+		push_warning("Failed to load font: %s (error: %d)" % [font_path, err])
+	
 	_label.text = building_name
 	_label.position = Vector3(0, building_height + 2.0, 0)
 	_label.modulate = Color(0.2, 0.9, 1.0, 1.0)
