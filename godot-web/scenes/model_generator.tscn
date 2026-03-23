@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://model_generator"]
+
+[ext_resource type="Script" path="res://scripts/editor/auto_generate.gd" id="1_auto"]
+
+[node name="ModelGenerator" type="Node"]
+script = ExtResource("1_auto")
