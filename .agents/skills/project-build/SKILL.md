@@ -76,14 +76,27 @@ go get modernc.org/sqlite@v1.37.0
 go mod tidy
 ```
 
-## Web 前端导出
+## 调试
 
 ```bash
-# 前提：已安装 Godot 4.5 和导出模板
-make web
+# 完整调试环境（推荐）
+# 启动 debug-server + 主服务器 + Godot
+make debug
 
-# 导出后的文件在 server/cmd/server/web/
+# 仅启动 Godot（用于手动调试）
+make godot-run
+
+# 停止调试环境
+make debug-stop
+
+# 如果需要 Web 导出（用于部署）
+make web
 ```
+
+调试环境架构：
+- Godot 直接运行（不导出），通过 HTTP 连接主服务器
+- Debug Server (8081) 提供截图、相机控制等功能
+- 支持热重载、断点调试等完整 Godot 功能
 
 ## 常见问题
 
@@ -92,6 +105,7 @@ make web
 | `godot4: command not found` | 使用完整路径 `/snap/bin/godot4` 或添加到 PATH |
 | `go: command not found` | 确保 `/usr/local/go/bin` 在 PATH 中 |
 | 端口 8080 被占用 | `make stop` 或 `pkill -f bin/server` |
+| Godot 无法连接 | 检查图形环境 `echo $DISPLAY`，或尝试 `godot4 --headless` |
 | Web 导出不工作 | 检查 Godot 导出模板是否安装 |
 
 ## 验证
