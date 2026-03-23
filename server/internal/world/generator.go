@@ -83,30 +83,6 @@ func (wg *WorldGenerator) GenerateInitialWorld() (*World, error) {
 		}
 	}
 	
-	// 4. 应用建筑地基到对应区块
-	for _, building := range world.InitialBuildings {
-		// 将建筑区域设为地基
-		for dx := 0; dx < building.Width; dx++ {
-			for dy := 0; dy < building.Depth; dy++ {
-				x := building.Anchor.X + dx
-				y := building.Anchor.Y + dy
-				
-				// 转换为区块坐标
-				cx, cy, bx, by := world.ChunkManager.WorldToChunk(x, y)
-				chunkKey := fmt.Sprintf("%d,%d", cx, cy)
-				
-				if chunk, ok := world.ChunkManager.cache[chunkKey]; ok {
-					key := fmt.Sprintf("%d,%d", bx, by)
-					if block, ok := chunk.Blocks[key]; ok {
-						block.TerrainType = TerrainFoundation
-						block.Z = 0
-						block.Height = 0
-						chunk.Blocks[key] = block
-					}
-				}
-			}
-		}
-	}
 	
 	// 5. 生成调试 NPC（在建筑附近）
 	spawnPoints := []Position{

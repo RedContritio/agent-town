@@ -242,20 +242,21 @@ func _spawn_agents(agents: Array):
 		name_labels.add_label(agent, agent_data.get("name", "Agent"), Color("#4fc3f7"))
 
 func _on_map_received(map_data: Dictionary):
+	# Process terrain first (required for correct building placement)
 	if map_data.has("chunks"):
 		_update_terrain_from_chunks(map_data["chunks"])
-		# Now spawn pending agents if any
-		if not pending_agents.is_empty():
-			_spawn_agents(pending_agents)
-			pending_agents.clear()
 	elif map_data.has("blocks"):
-		# Fallback for old API format
 		_update_terrain(map_data["blocks"])
-		if not pending_agents.is_empty():
-			_spawn_agents(pending_agents)
-			pending_agents.clear()
-		
+	
+	# Spawn pending agents now that terrain is ready
+	if not pending_agents.is_empty():
+		_spawn_agents(pending_agents)
+		pending_agents.clear()
+	
+	# Spawn buildings after terrain is ready (so ground height is correct)
 	if map_data.has("buildings"):
+		print("Terrain loaded, height map size: ", terrain_height_map.size())
+		print("Sample heights: -12,-12=", _get_ground_height(-12, -12), ", 10,-12=", _get_ground_height(10, -12))
 		_update_buildings(map_data["buildings"])
 
 func _get_ground_height(x: int, z: int) -> float:
@@ -276,6 +277,8 @@ func _update_terrain_from_chunks(chunks: Array):
 		var chunk_x = chunk.get("x", 0)
 		var chunk_y = chunk.get("y", 0)  # This is chunk's Y (which is Z in Godot)
 		var blocks = chunk.get("blocks", [])
+		
+
 		
 		# Create water floor for this chunk (32x32 thin slab at y=-1)
 		var water_instance = MeshInstance3D.new()
@@ -307,6 +310,8 @@ func _render_land_blocks(blocks: Array):
 		var z = pos.get("y", 0)  # API y is z in Godot
 		var type = block.get("terrainType", "grass")
 		
+
+		
 		var key = "%d,%d" % [int(x), int(z)]
 		
 		# Track the highest block at this x,z position
@@ -317,8 +322,8 @@ func _render_land_blocks(blocks: Array):
 			if y > existing.y:
 				surface_blocks[key] = {"x": x, "y": y, "z": z, "type": type}
 		
-		# Store surface height for agent spawning (ground level is y+0.5 for surface block)
-		var ground_level = float(y) + 0.5
+		# Store surface height for agent/building spawning (ground level is y+2.0 based on terrain rendering)
+		var ground_level = float(y) + 1.0  # surface_y + 1.0 (block top)
 		var current_top = terrain_height_map.get(key, -9999.0)
 		if ground_level > current_top:
 			terrain_height_map[key] = ground_level
@@ -497,7 +502,14 @@ func _update_buildings(buildings: Array):
 		var building = BUILDING_SCENE.instantiate()
 		building.add_to_group("buildings")
 		buildings_root.add_child(building)
+		
+		# 获取建筑位置的地面高度
+		var anchor = building_data.get("anchor", {})
+		var bx = anchor.get("x", 0)
+		var bz = anchor.get("y", 0)  # API y 是 Godot 的 z
+		var ground_height = _get_ground_height(int(bx), int(bz))
+		
 		# Setup after adding to scene tree so _ready() is called
-		building.setup(building_data)
+		building.setup_with_height(building_data, ground_height)
 		# Add name label - use building_name from the building node
 		name_labels.add_label(building, building.building_name, Color("#4fc3f7"))

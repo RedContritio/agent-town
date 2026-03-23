@@ -37,6 +37,10 @@ func _ready():
 	pass
 
 func setup(data: Dictionary):
+	# 兼容旧接口，使用地面高度 0
+	setup_with_height(data, 0.0)
+
+func setup_with_height(data: Dictionary, ground_height: float):
 	building_id = data.get("id", "")
 	building_name = data.get("name", "Building")
 	building_type = data.get("type", "house")
@@ -44,7 +48,7 @@ func setup(data: Dictionary):
 	var pos = data.get("anchor", {})
 	position = Vector3(
 		pos.get("x", 0),
-		0,
+		ground_height,
 		pos.get("y", 0)
 	)
 	
