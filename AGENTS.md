@@ -38,9 +38,12 @@
 
 ## 构建命令
 
-项目使用 Make 进行构建自动化：
+**⚠️ 始终优先使用 Make 命令** - 不要手动执行底层命令，Make 会处理依赖、错误检查和日志管理。
 
 ```bash
+# 查看所有可用命令
+make help
+
 # 构建所有组件（server + cli + web）
 make build
 
@@ -53,30 +56,56 @@ make cli
 # 单独导出 Web 前端（需要 godot4）
 make web
 
-# 构建并启动服务器
-make run
-
-# 停止服务器
-make stop
-
 # 运行测试
 make test
 
 # 清理构建产物
 make clean
+```
 
-# 显示帮助
-make help
+### 运行与调试
+
+```bash
+# 构建并启动主服务器（端口 8080）
+make run
+
+# 停止服务器
+make stop
+
+# 启动 Godot 原生模式（用于开发调试，不导出 Web）
+make godot-run
+
+# 构建并运行 Debug Server（端口 8081）
+make debug-server-run
+
+# 一键启动完整调试环境（server + debug-server + godot）
+make debug
+
+# 停止调试环境
+make debug-stop
 ```
 
 ### 快速开始
 
 ```bash
-# 构建所有组件并运行服务器
-make build && make run
+# 完整开发环境
+make debug
 
-# 打开浏览器访问 http://localhost:8080
+# 然后打开浏览器访问 http://localhost:8080
+# 或使用客户端脚本：
+#   ./.agents/skills/godot-web-debug/bin/client.sh capture  # 截图
+#   ./.agents/skills/godot-web-debug/bin/client.sh info     # 相机信息
 ```
+
+### 为什么使用 Make？
+
+| 优势 | 说明 |
+|------|------|
+| **统一入口** | 所有命令在一个地方管理，查看 `make help` 即可 |
+| **依赖处理** | `make run` 会自动先执行 `make server` |
+| **错误检查** | `make run` 会 curl 检查服务器是否成功启动 |
+| **日志管理** | 自动重定向到 `/tmp/` 文件 |
+| **环境隔离** | 自动处理工作目录和环境变量 |
 
 ### 开发工作流
 
