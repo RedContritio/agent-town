@@ -1,6 +1,6 @@
 SHELL := /bin/bash -lc
 
-.PHONY: build server cli web debug-server run stop clean test help
+.PHONY: build server cli web debug-server run stop clean test test-cli help
 
 # =============================================================================
 # Build
@@ -20,8 +20,8 @@ server:
 cli:
 	@mkdir -p bin
 	@echo "→ Building cli..."
-	@go build -o bin/cli ./cli/cmd/cli
-	@echo "✓ bin/cli"
+	@cd cli && go build -o ../bin/at-cli ./cmd/cli
+	@echo "✓ bin/at-cli"
 
 # Export web frontend (Godot WebAssembly)
 web:
@@ -86,7 +86,10 @@ clean:
 	@echo "✓ Cleaned"
 
 test:
-	@go test -v ./...
+	@go test -v ./server/...
+
+test-cli:
+	@cd cli && go test -v ./...
 
 help:
 	@echo "Agent Town - Build Commands"
@@ -107,7 +110,8 @@ help:
 	@echo ""
 	@echo "Utils:"
 	@echo "  make clean         # Clean build artifacts"
-	@echo "  make test          # Run tests"
+	@echo "  make test          # Run server tests"
+	@echo "  make test-cli      # Run CLI tests"
 	@echo "  make help          # Show this help"
 	@echo ""
 	@echo "Setup:    ./scripts/setup.sh"

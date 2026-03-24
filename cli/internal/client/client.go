@@ -1,4 +1,3 @@
-// Package client HTTP 客户端
 package client
 
 import (
@@ -10,20 +9,19 @@ import (
 	"time"
 )
 
-// Client HTTP 客户端
+// Client API 客户端
+// 决策：使用标准 net/http，简单无依赖。可选 resty（更丰富的功能）
 type Client struct {
-	baseURL    string
-	httpClient *http.Client
+	BaseURL    string
+	HTTPClient *http.Client
 	token      string
 }
 
-// NewClient 创建客户端
-func NewClient(baseURL string) *Client {
+// New 创建新客户端
+func New(baseURL string) *Client {
 	return &Client{
-		baseURL: baseURL,
-		httpClient: &http.Client{
-			Timeout: 30 * time.Second,
-		},
+		BaseURL:    baseURL,
+		HTTPClient: &http.Client{Timeout: 30 * time.Second},
 	}
 }
 
@@ -32,79 +30,118 @@ func (c *Client) SetToken(token string) {
 	c.token = token
 }
 
-// Get 发送 GET 请求
-func (c *Client) Get(path string) (*http.Response, error) {
-	return c.doRequest(http.MethodGet, path, nil)
-}
+// Do 发送 HTTP 请求
+func (c *Client) Do(method, path string, body interface{}, result interface{}) error {
+	url := c.BaseURL + path
 
-// Post 发送 POST 请求
-func (c *Client) Post(path string, body interface{}) (*http.Response, error) {
 	var bodyReader io.Reader
 	if body != nil {
 		jsonBody, err := json.Marshal(body)
 		if err != nil {
-			return nil, err
+			return fmt.Errorf("marshal body: %w", err)
 		}
 		bodyReader = bytes.NewReader(jsonBody)
 	}
-	return c.doRequest(http.MethodPost, path, bodyReader)
-}
 
-// Delete 发送 DELETE 请求
-func (c *Client) Delete(path string) (*http.Response, error) {
-	return c.doRequest(http.MethodDelete, path, nil)
-}
-
-// doRequest 执行 HTTP 请求
-func (c *Client) doRequest(method, path string, body io.Reader) (*http.Response, error) {
-	url := c.baseURL + path
-	req, err := http.NewRequest(method, url, body)
+	req, err := http.NewRequest(method, url, bodyReader)
 	if err != nil {
-		return nil, err
+		return fmt.Errorf("create request: %w", err)
 	}
 
-	req.Header.Set("Content-Type", "application/json")
+	// 设置 Headers
+	if body != nil {
+		req.Header.Set("Content-Type", "application/json")
+	}
 	if c.token != "" {
 		req.Header.Set("Authorization", "Bearer "+c.token)
 	}
 
-	return c.httpClient.Do(req)
-}
-
-// DoJSON 执行请求并解析 JSON 响应
-func (c *Client) DoJSON(method, path string, body interface{}, result interface{}) error {
-	var bodyReader io.Reader
-	if body != nil {
-		jsonBody, err := json.Marshal(body)
-		if err != nil {
-			return err
-		}
-		bodyReader = bytes.NewReader(jsonBody)
-	}
-
-	resp, err := c.doRequest(method, path, bodyReader)
+	// 发送请求
+	resp, err := c.HTTPClient.Do(req)
 	if err != nil {
-		return err
+		return fmt.Errorf("do request: %w", err)
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode >= 400 {
-		bodyBytes, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("HTTP %d: %s", resp.StatusCode, string(bodyBytes))
+	// 读取响应
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("read response: %w", err)
 	}
 
-	if result != nil {
-		return json.NewDecoder(resp.Body).Decode(result)
+	// 检查状态码
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return fmt.Errorf("HTTP %d: %s", resp.StatusCode, string(respBody))
 	}
+
+	// 解析响应
+	if result != nil && len(respBody) > 0 {
+		if err := json.Unmarshal(respBody, result); err != nil {
+			return fmt.Errorf("unmarshal response: %w", err)
+		}
+	}
+
 	return nil
 }
 
-// GetJSON 发送 GET 请求并解析 JSON
-func (c *Client) GetJSON(path string, result interface{}) error {
-	return c.DoJSON(http.MethodGet, path, nil, result)
+// Get 发送 GET 请求
+func (c *Client) Get(path string, result interface{}) error {
+	return c.Do(http.MethodGet, path, nil, result)
 }
 
-// PostJSON 发送 POST 请求并解析 JSON
-func (c *Client) PostJSON(path string, body, result interface{}) error {
-	return c.DoJSON(http.MethodPost, path, body, result)
+// Post 发送 POST 请求
+func (c *Client) Post(path string, body interface{}, result interface{}) error {
+	return c.Do(http.MethodPost, path, body, result)
+}
+
+// Delete 发送 DELETE 请求
+func (c *Client) Delete(path string, result interface{}) error {
+	return c.Do(http.MethodDelete, path, nil, result)
+}
+
+// Auth 返回认证 API 客户端
+func (c *Client) Auth() *AuthAPI {
+	return &AuthAPI{client: c}
+}
+
+// AuthAPI 认证相关 API
+type AuthAPI struct {
+	client *Client
+}
+
+// Register 注册新 Agent
+func (a *AuthAPI) Register(req *RegisterRequest) (*RegisterResponse, error) {
+	var resp RegisterResponse
+	if err := a.client.Post("/api/v1/auth/register", req, &resp); err != nil {
+		return nil, err
+	}
+	return &resp, nil
+}
+
+// Challenge 获取认证挑战
+func (a *AuthAPI) Challenge(publicKey string) (*ChallengeResponse, error) {
+	req := &ChallengeRequest{PublicKey: publicKey}
+	var resp ChallengeResponse
+	if err := a.client.Post("/api/v1/auth/challenge", req, &resp); err != nil {
+		return nil, err
+	}
+	return &resp, nil
+}
+
+// Token 获取访问 Token
+func (a *AuthAPI) Token(req *TokenRequest) (*TokenResponse, error) {
+	var resp TokenResponse
+	if err := a.client.Post("/api/v1/auth/token", req, &resp); err != nil {
+		return nil, err
+	}
+	return &resp, nil
+}
+
+// Commands 获取命令列表
+func (c *Client) Commands() (*CommandsResponse, error) {
+	var resp CommandsResponse
+	if err := c.Get("/api/v1/commands", &resp); err != nil {
+		return nil, err
+	}
+	return &resp, nil
 }
